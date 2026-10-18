@@ -29,20 +29,18 @@ const stateColor = (state) => {
   return "default";
 };
 
-const supportLabel = (support, t) => {
-  if (support === "partially_verified") return t("settings.aiAssistants.support.partial", "Read-only connection observed; broader support not verified");
-  if (support === "not_a_tenant_connection") return t("settings.aiAssistants.support.internal", "Not a business connection");
-  if (support === "unsupported") return t("settings.aiAssistants.support.unsupported", "Not supported");
-  return t("settings.aiAssistants.support.unverified", "Not verified");
+const sectionSx = {
+  border: "1px solid",
+  borderColor: "rgba(40, 83, 174, 0.16)",
+  borderRadius: 3,
+  bgcolor: "background.paper",
+  boxShadow: "0 8px 24px rgba(24, 45, 90, 0.06)",
+  p: { xs: 2, sm: 2.5 },
 };
 
-const sectionSx = {
-  border: 1,
-  borderColor: "divider",
-  borderRadius: 2,
-  bgcolor: "background.paper",
-  p: { xs: 1.5, sm: 2 },
-};
+const uiFont = '"Inter", "Roboto", "Helvetica", Arial, sans-serif';
+const sectionTitleSx = { fontFamily: uiFont, fontWeight: 750, letterSpacing: "-0.01em", fontSize: "1rem" };
+const mutedTextSx = { fontFamily: uiFont, fontSize: "0.875rem", lineHeight: 1.55, color: "text.secondary" };
 
 const scopePreview = (scopes, details, limit = 4) => scopes.slice(0, limit).map((scope) => details.get(scope) || scope);
 
@@ -135,6 +133,11 @@ export default function SettingsAiAssistants() {
     }
   };
 
+  const openAccess = (connection = {}) => {
+    setDesiredProfileKey("manager");
+    setAccessConnection(connection);
+  };
+
   const protocolTest = async (connectionId) => {
     setBusyId(connectionId);
     setMessage(null);
@@ -195,6 +198,8 @@ export default function SettingsAiAssistants() {
   const desiredScopes = desiredProfile?.scopes || [];
   const usableDesiredScopes = desiredScopes.filter((scope) => grantedScopes.has(scope));
   const missingDesiredScopes = desiredScopes.filter((scope) => !grantedScopes.has(scope));
+  const activeConnections = (status.connections || []).filter((connection) => connection.state !== "disconnected");
+  const previousConnections = (status.connections || []).filter((connection) => connection.state === "disconnected");
 
   const copyText = async (value, successText) => {
     if (!value || !navigator.clipboard?.writeText) {
@@ -210,15 +215,39 @@ export default function SettingsAiAssistants() {
   };
 
   return (
-    <Stack spacing={2}>
-      <Dialog open={Boolean(accessConnection)} onClose={() => setAccessConnection(null)} maxWidth="md" fullWidth>
-        <DialogTitle>{t("settings.aiAssistants.manageAccess", "Manage access")}</DialogTitle>
+    <Stack
+      spacing={2.5}
+      sx={{
+        fontFamily: uiFont,
+        maxWidth: 1180,
+        pb: 2,
+        color: "#172554",
+        "& .MuiTypography-root": { fontFamily: uiFont, color: "#172554" },
+        "& .MuiTypography-colorTextSecondary": { color: "#52617a" },
+        "& .MuiChip-root": {
+          height: 24,
+          borderRadius: 1.25,
+          bgcolor: "#eef4ff",
+          border: "1px solid #cadbff",
+          color: "#19345d",
+          fontFamily: uiFont,
+          fontWeight: 700,
+          fontSize: "0.72rem",
+          "& .MuiChip-label": { color: "#19345d", px: 1 },
+        },
+        "& .MuiChip-colorSuccess": { bgcolor: "#e7f6ed", borderColor: "#a9ddbc", "& .MuiChip-label": { color: "#17653a" } },
+        "& .MuiChip-colorWarning": { bgcolor: "#fff5df", borderColor: "#f1c86d", "& .MuiChip-label": { color: "#825600" } },
+        "& .MuiChip-colorInfo": { bgcolor: "#e9f3ff", borderColor: "#a9ccfb", "& .MuiChip-label": { color: "#164f8e" } },
+      }}
+    >
+      <Dialog open={Boolean(accessConnection)} onClose={() => setAccessConnection(null)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3, "& .MuiTypography-root": { fontFamily: uiFont, color: "#172554" }, "& .MuiChip-root": { color: "#19345d", bgcolor: "#eef4ff", border: "1px solid #cadbff", fontWeight: 700, "& .MuiChip-label": { color: "#19345d" } }, "& .MuiChip-colorSuccess": { bgcolor: "#e7f6ed", "& .MuiChip-label": { color: "#17653a" } }, "& .MuiChip-colorWarning": { bgcolor: "#fff5df", "& .MuiChip-label": { color: "#825600" } } } }}>
+        <DialogTitle>{accessConnection?.id ? t("settings.aiAssistants.manageAccess", "Manage access") : "Connect an assistant"}</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
-            <Typography variant="body2">
+            <Typography variant="body2" color="text.secondary">
               {t(
                 "settings.aiAssistants.manageAccessExplanation",
-                "Choose the access you want the assistant to request. This does not alter the current connection: the assistant must start a new OAuth authorization and you must approve the requested scopes."
+                "Choose the access to request. Schedulaa never changes an existing connection here: reconnect from your assistant, then approve the new request."
               )}
             </Typography>
             <Stack spacing={1.25}>
@@ -277,15 +306,11 @@ export default function SettingsAiAssistants() {
                 `${(accessConnection?.usable_tools || []).length} assistant action${(accessConnection?.usable_tools || []).length === 1 ? " is" : "s are"} currently usable with this connection.`
               )}
             </Typography>
-            <Typography variant="body2">
-              {t("settings.aiAssistants.museReauthorization", "Muse: open the existing Connect card again. It starts a new authorization; sign in to Schedulaa and approve only the scopes shown on its consent screen.")}
-            </Typography>
-            <Typography variant="body2">
-              {t("settings.aiAssistants.grokReauthorization", "Grok: use the same working connector's reconnect flow. Schedulaa does not create a Grok deep link or silently extend existing tokens.")}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {t("settings.aiAssistants.reauthorizationSafety", "A new authorization leaves this connection unchanged. Disconnect it separately if you no longer want it to have its current access.")}
-            </Typography>
+            <Box sx={{ borderRadius: 2, p: 1.5, bgcolor: "#f8fbff", border: "1px solid #d7e5fb" }}>
+              <Typography sx={{ ...sectionTitleSx, fontSize: ".92rem" }}>Finish in your assistant</Typography>
+              <Typography sx={{ ...mutedTextSx, mt: .5 }}>Muse: open the existing Schedulaa Connect card again. Grok: use the same connector’s reconnect action. Each opens the Schedulaa consent page for this new request.</Typography>
+              {status.mcp_url && <Button size="small" variant="outlined" sx={{ mt: 1 }} onClick={() => copyConnectorUrl(status.mcp_url)}>Copy connector URL</Button>}
+            </Box>
             <Accordion disableGutters elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: 1.5, "&:before": { display: "none" } }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="body2">Exact technical scope request</Typography>
@@ -301,11 +326,6 @@ export default function SettingsAiAssistants() {
         </DialogContent>
         <DialogActions>
           <Button onClick={load}>{t("common.refresh", "Refresh")}</Button>
-          {status.mcp_url && (
-            <Button onClick={() => copyConnectorUrl(status.mcp_url)}>
-              {t("settings.aiAssistants.copyConnectorUrl", "Copy connector URL")}
-            </Button>
-          )}
           <Button onClick={() => setAccessConnection(null)}>
             {t("common.close", "Close")}
           </Button>
@@ -329,98 +349,59 @@ export default function SettingsAiAssistants() {
         </Alert>
       )}
       {eligible && !configurationError && business && (
-        <Box sx={sectionSx}>
-          <Typography variant="subtitle1">
-            {t("settings.aiAssistants.businessHeading", "Business to connect")}
-          </Typography>
-          <Typography variant="body2">
-            {business.name} · {t("settings.aiAssistants.timezone", "Timezone")}: {business.timezone}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {t("settings.aiAssistants.account", "Signed in as")} {status.account?.display_name}
-          </Typography>
+        <Box sx={{ ...sectionSx, overflow: "hidden", position: "relative", background: "linear-gradient(135deg, rgba(29,78,216,.11), rgba(124,58,237,.06) 58%, rgba(255,255,255,.96))" }}>
+          <Box sx={{ position: "absolute", width: 190, height: 190, borderRadius: "50%", right: -72, top: -92, bgcolor: "rgba(37,99,235,.08)" }} />
+          <Stack spacing={0.75} sx={{ position: "relative" }}>
+            <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1} alignItems={{ sm: "center" }}>
+              <Box>
+                <Typography sx={{ ...sectionTitleSx, fontSize: "1.18rem" }}>{t("settings.aiAssistants.businessHeading", "AI assistant workspace")}</Typography>
+                <Typography sx={mutedTextSx}>{t("settings.aiAssistants.account", "Signed in as")} {status.account?.display_name}</Typography>
+              </Box>
+              <Chip size="small" color={activeConnections.length ? "success" : "default"} label={activeConnections.length ? `${activeConnections.length} active connection${activeConnections.length === 1 ? "" : "s"}` : "No active connection"} />
+            </Stack>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 1.25, mt: 1 }}>
+              <Box sx={{ borderRadius: 2, p: 1.25, bgcolor: "rgba(255,255,255,.72)" }}><Typography sx={{ ...mutedTextSx, fontSize: "0.72rem", fontWeight: 750, textTransform: "uppercase", letterSpacing: ".06em" }}>Business</Typography><Typography sx={{ fontFamily: uiFont, fontWeight: 750, mt: .25 }}>{business.name}</Typography></Box>
+              <Box sx={{ borderRadius: 2, p: 1.25, bgcolor: "rgba(255,255,255,.72)" }}><Typography sx={{ ...mutedTextSx, fontSize: "0.72rem", fontWeight: 750, textTransform: "uppercase", letterSpacing: ".06em" }}>Timezone</Typography><Typography sx={{ fontFamily: uiFont, fontWeight: 650, mt: .25 }}>{business.timezone}</Typography></Box>
+            </Box>
+          </Stack>
         </Box>
       )}
       {eligible && !configurationError && (
         <Box sx={sectionSx}>
-          <Typography variant="subtitle1">
-            {t("settings.aiAssistants.accessHeading", "Choose access to request")}
-          </Typography>
-          <Stack spacing={1} sx={{ mt: 1 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={.75} alignItems={{ sm: "center" }}>
+            <Box><Typography sx={sectionTitleSx}>{t("settings.aiAssistants.accessHeading", "Access profiles")}</Typography><Typography sx={mutedTextSx}>Choose what a new authorization may request. Existing connections never change here.</Typography></Box>
+            {Number(status.pending_approval_count) > 0 && <Button component="a" href="/manager/ai-assistant-approvals" variant="contained" size="small">Review approvals</Button>}
+          </Stack>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(2, minmax(0, 1fr))" }, gap: 1.25, mt: 1.5 }}>
             {(status.access_profiles || []).map((profile) => (
-              <Box key={profile.key} sx={{ border: 1, borderColor: "divider", borderRadius: 1.5, p: 1.25, bgcolor: "action.hover" }}>
+              <Box key={profile.key} sx={{ border: "1px solid", borderColor: profile.key === "manager" ? "primary.light" : "divider", borderRadius: 2, p: 1.5, bgcolor: profile.key === "manager" ? "rgba(37,99,235,.045)" : "background.default" }}>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{profile.name}</Typography>
+                  <Typography sx={{ fontFamily: uiFont, fontWeight: 750, fontSize: ".94rem" }}>{profile.name}</Typography>
                   {profile.requires_reauthorization && (
                     <Chip size="small" color="warning" label={t("settings.aiAssistants.reauthorization", "New authorization required")} />
                   )}
                 </Stack>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{profile.summary}</Typography>
+                <Typography sx={{ ...mutedTextSx, mt: .6 }}>{profile.summary}</Typography>
               </Box>
             ))}
+          </Box>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1.5 }}>
+            <Button variant="contained" size="small" onClick={() => openAccess()}>{activeConnections.length ? "Request different access" : "Connect an assistant"}</Button>
+            <Typography sx={{ ...mutedTextSx, alignSelf: { sm: "center" } }}>Setup starts in your assistant. This page never changes a connection’s permissions silently.</Typography>
           </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            {t("settings.aiAssistants.reconnectHelp", "Select a profile under a connection’s Manage access button. Connections begin in your assistant; Settings shows the exact scope request and never changes an existing token itself.")}
-          </Typography>
-          {Number(status.pending_approval_count) > 0 && (
-            <Button component="a" href="/manager/ai-assistant-approvals" variant="contained" sx={{ mt: 1 }}>
-              {t(
-                "settings.aiAssistants.reviewApprovals",
-                `Review ${status.pending_approval_count} assistant action waiting for you`
-              )}
-            </Button>
-          )}
-          {status.mcp_url && (
-            <Stack spacing={0.5} sx={{ mt: 1 }}>
-              <Button variant="outlined" size="small" onClick={() => copyConnectorUrl(status.mcp_url)} sx={{ alignSelf: "flex-start" }}>
-                {t("settings.aiAssistants.copyConnectorUrl", "Copy connector URL")}
-              </Button>
-              <Typography variant="body2" sx={{ wordBreak: "break-all" }}>
-                {t("settings.aiAssistants.connectorUrl", "Connector URL")}: {status.mcp_url}
-              </Typography>
-            </Stack>
-          )}
         </Box>
       )}
       {eligible && !configurationError && (
         <Stack spacing={1.25} sx={sectionSx}>
-          <Typography variant="subtitle1">{t("settings.aiAssistants.providers", "Assistants")}</Typography>
-          {(status.providers || []).map((provider) => (
-            <Box key={provider.key} sx={{ borderBottom: 1, borderColor: "divider", pb: 1.25, "&:last-child": { borderBottom: 0, pb: 0 } }}>
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                  {provider.name}
-                </Typography>
-                <Chip size="small" label={supportLabel(provider.support, t)} />
-              </Stack>
-              <Typography variant="body2" color="text.secondary">
-                {provider.summary}
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                {t(
-                  "settings.aiAssistants.providerSetup",
-                  "Start this connection inside the assistant. Use its supported remote MCP or connector flow, then sign in to Schedulaa when it opens the consent page."
-                )}
-              </Typography>
-              {provider.reauthorization && (
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                  {provider.reauthorization}
-                </Typography>
-              )}
-            </Box>
-          ))}
-        </Stack>
-      )}
-      {eligible && !configurationError && (
-        <Stack spacing={1.25} sx={sectionSx}>
-          <Typography variant="subtitle1">{t("settings.aiAssistants.connections", "Connections")}</Typography>
-          {(status.connections || []).length === 0 && (
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={.75}><Box><Typography sx={sectionTitleSx}>{t("settings.aiAssistants.connections", "Your connections")}</Typography><Typography sx={mutedTextSx}>Connection health and access are shown here. Technical details stay collapsed.</Typography></Box>{status.mcp_url && <Button variant="outlined" size="small" onClick={() => copyConnectorUrl(status.mcp_url)}>Copy connector URL</Button>}</Stack>
+          {activeConnections.length === 0 && (
             <Alert severity="info">
               {t("settings.aiAssistants.waiting", "Waiting for authorization. No assistant is connected yet.")}
             </Alert>
           )}
-          {(status.connections || []).map((connection) => (
-            <Box key={connection.id} sx={{ border: 1, borderColor: connection.state === "disconnected" ? "divider" : "primary.light", borderRadius: 2, p: 1.5, bgcolor: connection.state === "disconnected" ? "action.hover" : "background.default" }}>
+          <Stack spacing={1.25}>
+          {activeConnections.map((connection) => (
+            <Box key={connection.id} sx={{ border: "1px solid", borderColor: "primary.light", borderRadius: 2.25, p: { xs: 1.5, sm: 2 }, bgcolor: "rgba(37,99,235,.025)" }}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between">
                 <Box>
                   <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -432,14 +413,14 @@ export default function SettingsAiAssistants() {
                       <Chip size="small" label={t("settings.aiAssistants.authorizedOnly", "Authorized, not yet verified")} />
                     )}
                   </Stack>
-                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                  <Typography sx={{ fontFamily: uiFont, fontWeight: 750, fontSize: ".95rem", mt: .75 }}>
                     {connection.account_display_name} · {connection.business_name}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
+                  <Typography sx={{ ...mutedTextSx, fontSize: ".78rem", mt: .4 }}>
                     {t("settings.aiAssistants.lastRequest", "Last successful assistant request")}:{" "}
                     {connection.last_successful_assistant_request_at || t("settings.aiAssistants.never", "Never")}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
+                  <Typography sx={{ ...mutedTextSx, fontSize: ".78rem" }}>
                     {connection.state === "disconnected"
                       ? t("settings.aiAssistants.connectionHealthDisconnected", "Connection health: disconnected")
                       : connection.last_successful_assistant_request_at
@@ -447,19 +428,9 @@ export default function SettingsAiAssistants() {
                         : t("settings.aiAssistants.connectionHealthPending", "Connection health: authorized; waiting for the first assistant request")}
                   </Typography>
                 </Box>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                  {connection.owned_by_self && connection.state !== "disconnected" && (
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => protocolTest(connection.id)}
-                      disabled={busyId === connection.id}
-                    >
-                      {t("settings.aiAssistants.localTest", "Run local protocol check")}
-                    </Button>
-                  )}
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={.75}>
                   {connection.owned_by_self && connection.state !== "disconnected" && status.mcp_url && (
-                    <Button variant="outlined" size="small" onClick={() => setAccessConnection(connection)} disabled={busyId === connection.id}>
+                    <Button variant="outlined" size="small" onClick={() => openAccess(connection)} disabled={busyId === connection.id}>
                       {t("settings.aiAssistants.manageAccess", "Manage access")}
                     </Button>
                   )}
@@ -476,7 +447,7 @@ export default function SettingsAiAssistants() {
                   )}
                 </Stack>
               </Stack>
-              <Accordion disableGutters elevation={0} sx={{ mt: 1, borderTop: 1, borderColor: "divider" }}>
+              <Accordion disableGutters elevation={0} sx={{ mt: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5, bgcolor: "background.paper", "&:before": { display: "none" } }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="body2">{t("settings.aiAssistants.advanced", "Advanced")}</Typography>
                 </AccordionSummary>
@@ -488,10 +459,13 @@ export default function SettingsAiAssistants() {
                     {t("settings.aiAssistants.effectivePermissions", "Granted OAuth scopes")}: {connection.scopes?.length ? connection.scopes.join(", ") : t("settings.aiAssistants.noPermissions", "None")}
                   </Typography>
                   {connection.local_protocol_checked_at && <Typography variant="caption" color="text.secondary" display="block">{t("settings.aiAssistants.localChecked", "Local protocol check recorded. This is not provider verification.")}</Typography>}
+                  {connection.owned_by_self && <Button size="small" variant="text" sx={{ mt: .75 }} onClick={() => protocolTest(connection.id)} disabled={busyId === connection.id}>Run connection diagnostic</Button>}
                 </AccordionDetails>
               </Accordion>
             </Box>
           ))}
+          </Stack>
+          {previousConnections.length > 0 && <Accordion disableGutters elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2, bgcolor: "action.hover", "&:before": { display: "none" } }}><AccordionSummary expandIcon={<ExpandMoreIcon />}><Typography sx={{ ...mutedTextSx, fontWeight: 700 }}>Previous connections ({previousConnections.length})</Typography></AccordionSummary><AccordionDetails sx={{ pt: 0 }}><Stack spacing={.75}>{previousConnections.map((connection) => <Box key={connection.id} sx={{ px: 1.25, py: 1, borderRadius: 1.5, bgcolor: "background.paper" }}><Typography sx={{ fontFamily: uiFont, fontSize: ".85rem", fontWeight: 650 }}>{connection.account_display_name} · {connection.business_name}</Typography><Typography sx={{ ...mutedTextSx, fontSize: ".76rem" }}>Disconnected. It cannot access this business.</Typography></Box>)}</Stack></AccordionDetails></Accordion>}
         </Stack>
       )}
       {eligible && !configurationError && (
