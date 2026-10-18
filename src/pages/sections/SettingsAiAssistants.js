@@ -6,6 +6,10 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Stack,
   Typography,
 } from "@mui/material";
@@ -34,6 +38,7 @@ export default function SettingsAiAssistants() {
   const [unavailable, setUnavailable] = useState(false);
   const [message, setMessage] = useState(null);
   const [busyId, setBusyId] = useState("");
+  const [accessConnection, setAccessConnection] = useState(null);
 
   const copyConnectorUrl = async (url) => {
     if (!url || !navigator.clipboard?.writeText) {
@@ -169,6 +174,46 @@ export default function SettingsAiAssistants() {
 
   return (
     <Stack spacing={2}>
+      <Dialog open={Boolean(accessConnection)} onClose={() => setAccessConnection(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>{t("settings.aiAssistants.manageAccess", "Manage access")}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ pt: 1 }}>
+            <Typography variant="body2">
+              {t(
+                "settings.aiAssistants.manageAccessExplanation",
+                "This connection currently has the permissions shown below. Schedulaa cannot add scopes to its existing tokens."
+              )}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {t(
+                "settings.aiAssistants.manageAccessSteps",
+                "To request Manager access, reconnect or add Schedulaa from your assistant, then complete the new Schedulaa consent screen. The assistant chooses which scopes to request; you choose which requested scopes to approve."
+              )}
+            </Typography>
+            <Typography variant="body2">
+              {t("settings.aiAssistants.currentPermissions", "Current permissions")}: {accessConnection?.scopes?.length
+                ? accessConnection.scopes.join(", ")
+                : t("settings.aiAssistants.noPermissions", "None")}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {t(
+                "settings.aiAssistants.reauthorizationSafety",
+                "A new authorization leaves this connection unchanged. Disconnect it separately if you no longer want it to have its current access."
+              )}
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          {status.mcp_url && (
+            <Button onClick={() => copyConnectorUrl(status.mcp_url)}>
+              {t("settings.aiAssistants.copyConnectorUrl", "Copy connector URL")}
+            </Button>
+          )}
+          <Button onClick={() => setAccessConnection(null)}>
+            {t("common.close", "Close")}
+          </Button>
+        </DialogActions>
+      </Dialog>
       {message && <Alert severity={message.severity}>{message.text}</Alert>}
       {!eligible && (
         <Alert severity="warning">
@@ -330,7 +375,7 @@ export default function SettingsAiAssistants() {
                     </Button>
                   )}
                   {connection.owned_by_self && connection.state !== "disconnected" && status.mcp_url && (
-                    <Button variant="outlined" onClick={() => copyConnectorUrl(status.mcp_url)} disabled={busyId === connection.id}>
+                    <Button variant="outlined" onClick={() => setAccessConnection(connection)} disabled={busyId === connection.id}>
                       {t("settings.aiAssistants.manageAccess", "Manage access")}
                     </Button>
                   )}

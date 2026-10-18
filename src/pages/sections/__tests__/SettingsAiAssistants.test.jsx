@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import SettingsAiAssistants from "../SettingsAiAssistants";
 
 const mockStatus = jest.fn();
@@ -87,7 +87,8 @@ describe("SettingsAiAssistants", () => {
     expect(screen.getByText("Manager access")).toBeTruthy();
     expect(screen.getByText(/New authorization required/i)).toBeTruthy();
     expect(screen.getByText(/Effective permissions/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Manage access" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Manage access" }));
+    expect(await screen.findByText(/Schedulaa cannot add scopes to its existing tokens/i)).toBeTruthy();
     await waitFor(() => expect(mockActivity).toHaveBeenCalled());
   });
 
