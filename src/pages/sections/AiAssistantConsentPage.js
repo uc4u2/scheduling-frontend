@@ -113,6 +113,10 @@ export default function AiAssistantConsentPage() {
     }
   };
 
+  const requestsManagerAccess = (record?.requested_scopes || []).some(
+    (item) => !["assistant.whoami", "customers.read", "customers.contact.read"].includes(item.scope)
+  );
+
   return (
     <Container maxWidth="sm" sx={{ py: 4 }}>
       <Stack spacing={2}>
@@ -143,6 +147,23 @@ export default function AiAssistantConsentPage() {
               {t("settings.aiAssistants.reportedName", "Name reported by the connector (not verified)")}:{" "}
               {record.reported_client_name || t("settings.aiAssistants.unknownClient", "Unknown")}
             </Typography>
+            <Alert severity={requestsManagerAccess ? "warning" : "info"} sx={{ mt: 2 }}>
+              {requestsManagerAccess
+                ? t(
+                    "settings.aiAssistants.managerConsentExplanation",
+                    "This connector is requesting Manager access. Review every selected permission. Consequential actions still require a separate in-app human approval."
+                  )
+                : t(
+                    "settings.aiAssistants.readConsentExplanation",
+                    "This connector is requesting read-only access. It cannot change business data with these permissions."
+                  )}
+            </Alert>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {t(
+                "settings.aiAssistants.newAuthorizationExplanation",
+                "This is a new OAuth authorization. It does not add permissions to an existing assistant token or reconnect a disconnected one."
+              )}
+            </Typography>
             <Stack spacing={0.5} sx={{ mt: 2 }}>
               {(record.requested_scopes || []).map((scope) => (
                 <FormControlLabel
@@ -169,7 +190,7 @@ export default function AiAssistantConsentPage() {
               }
               label={t(
                 "settings.aiAssistants.consentCheck",
-                "I approve this read access for the signed-in account and this business."
+                "I approve the selected access for the signed-in account and this business."
               )}
             />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}>

@@ -35,6 +35,19 @@ export default function SettingsAiAssistants() {
   const [message, setMessage] = useState(null);
   const [busyId, setBusyId] = useState("");
 
+  const copyConnectorUrl = async (url) => {
+    if (!url || !navigator.clipboard?.writeText) {
+      setMessage({ severity: "info", text: t("settings.aiAssistants.copyUnavailable", "Copy is not available in this browser. Select the connector URL below.") });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setMessage({ severity: "success", text: t("settings.aiAssistants.connectorCopied", "Connector URL copied. Add or reconnect it from your assistant.") });
+    } catch (_error) {
+      setMessage({ severity: "info", text: t("settings.aiAssistants.copyUnavailable", "Copy is not available in this browser. Select the connector URL below.") });
+    }
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     setMessage(null);
@@ -189,19 +202,25 @@ export default function SettingsAiAssistants() {
       {eligible && !configurationError && (
         <Box>
           <Typography variant="subtitle1">
-            {t("settings.aiAssistants.permissionsHeading", "Permissions you can approve")}
+            {t("settings.aiAssistants.accessHeading", "Choose access in your assistant")}
           </Typography>
-          <Stack component="ul" spacing={0.5} sx={{ pl: 2, m: 0 }}>
-            {(status.scopes_offered || []).map((scope) => (
-              <Typography component="li" variant="body2" key={scope.scope}>
-                {scope.description}
-              </Typography>
+          <Stack spacing={1} sx={{ mt: 1 }}>
+            {(status.access_profiles || []).map((profile) => (
+              <Box key={profile.key} sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 1.25 }}>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{profile.name}</Typography>
+                  {profile.requires_reauthorization && (
+                    <Chip size="small" color="warning" label={t("settings.aiAssistants.reauthorization", "New authorization required")} />
+                  )}
+                </Stack>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{profile.summary}</Typography>
+              </Box>
             ))}
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
             {t(
               "settings.aiAssistants.reconnectHelp",
-              "Open your assistant and add Schedulaa's connector. When it asks you to sign in, approve this business. A disconnected connection is not turned back on by itself."
+              "Connections begin in your assistant. To add Manager access, use that assistant's reconnect or add-connection flow and complete a new Schedulaa authorization. Viewing this option does not change an existing token."
             )}
           </Typography>
           {Number(status.pending_approval_count) > 0 && (
@@ -213,9 +232,14 @@ export default function SettingsAiAssistants() {
             </Button>
           )}
           {status.mcp_url && (
-            <Typography variant="body2" sx={{ mt: 1, wordBreak: "break-all" }}>
-              {t("settings.aiAssistants.connectorUrl", "Connector URL")}: {status.mcp_url}
-            </Typography>
+            <Stack spacing={0.5} sx={{ mt: 1 }}>
+              <Button variant="outlined" size="small" onClick={() => copyConnectorUrl(status.mcp_url)} sx={{ alignSelf: "flex-start" }}>
+                {t("settings.aiAssistants.copyConnectorUrl", "Copy connector URL")}
+              </Button>
+              <Typography variant="body2" sx={{ wordBreak: "break-all" }}>
+                {t("settings.aiAssistants.connectorUrl", "Connector URL")}: {status.mcp_url}
+              </Typography>
+            </Stack>
           )}
         </Box>
       )}
@@ -232,6 +256,12 @@ export default function SettingsAiAssistants() {
               </Stack>
               <Typography variant="body2" color="text.secondary">
                 {provider.summary}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                {t(
+                  "settings.aiAssistants.providerSetup",
+                  "Start this connection inside the assistant. Use its supported remote MCP or connector flow, then sign in to Schedulaa when it opens the consent page."
+                )}
               </Typography>
             </Box>
           ))}
@@ -269,6 +299,17 @@ export default function SettingsAiAssistants() {
                     {t("settings.aiAssistants.lastRequest", "Last successful assistant request")}:{" "}
                     {connection.last_successful_assistant_request_at || t("settings.aiAssistants.never", "Never")}
                   </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {t("settings.aiAssistants.effectivePermissions", "Effective permissions")}:{" "}
+                    {connection.scopes?.length ? connection.scopes.join(", ") : t("settings.aiAssistants.noPermissions", "None")}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {connection.state === "disconnected"
+                      ? t("settings.aiAssistants.connectionHealthDisconnected", "Connection health: disconnected")
+                      : connection.last_successful_assistant_request_at
+                        ? t("settings.aiAssistants.connectionHealthActive", "Connection health: a successful assistant request was recorded")
+                        : t("settings.aiAssistants.connectionHealthPending", "Connection health: authorized; waiting for the first assistant request")}
+                  </Typography>
                   {connection.local_protocol_checked_at && (
                     <Typography variant="caption" color="text.secondary" display="block">
                       {t(
@@ -286,6 +327,11 @@ export default function SettingsAiAssistants() {
                       disabled={busyId === connection.id}
                     >
                       {t("settings.aiAssistants.localTest", "Run local protocol check")}
+                    </Button>
+                  )}
+                  {connection.owned_by_self && connection.state !== "disconnected" && status.mcp_url && (
+                    <Button variant="outlined" onClick={() => copyConnectorUrl(status.mcp_url)} disabled={busyId === connection.id}>
+                      {t("settings.aiAssistants.manageAccess", "Manage access")}
                     </Button>
                   )}
                   {connection.state !== "disconnected" && (connection.owned_by_self || status.permissions?.is_owner) && (

@@ -48,6 +48,10 @@ describe("SettingsAiAssistants", () => {
       business: { id: 4, name: "Salon", timezone: "America/Toronto" },
       permissions: { is_manager: true, is_owner: true, can_manage_integrations: true },
       scopes_offered: [{ scope: "customers.read", description: "Find customers and view their name" }],
+      access_profiles: [
+        { key: "read_only", name: "Read-only access", summary: "Read customer names.", requires_reauthorization: false },
+        { key: "manager", name: "Manager access", summary: "Request supported manager actions.", requires_reauthorization: true },
+      ],
       providers: [
         {
           key: "grok_custom_mcp",
@@ -67,6 +71,7 @@ describe("SettingsAiAssistants", () => {
           account_display_name: "Ada Owner",
           business_name: "Salon",
           owned_by_self: true,
+          scopes: ["assistant.whoami", "customers.read"],
           last_successful_assistant_request_at: null,
           local_protocol_checked_at: "2026-10-17T00:00:00Z",
         },
@@ -79,6 +84,10 @@ describe("SettingsAiAssistants", () => {
     expect(screen.getAllByText(/Salon/).length).toBeGreaterThan(0);
     expect(screen.getByText(/not yet verified/i)).toBeTruthy();
     expect(screen.getByText(/not provider verification/i)).toBeTruthy();
+    expect(screen.getByText("Manager access")).toBeTruthy();
+    expect(screen.getByText(/New authorization required/i)).toBeTruthy();
+    expect(screen.getByText(/Effective permissions/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Manage access" })).toBeTruthy();
     await waitFor(() => expect(mockActivity).toHaveBeenCalled());
   });
 
