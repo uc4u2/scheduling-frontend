@@ -243,6 +243,12 @@ export default function SettingsAiAssistants() {
                 : t("settings.aiAssistants.accessReady", "This connection already has the selected permissions.")}
             </Alert>
             <Typography variant="body2" color="text.secondary">
+              {t(
+                "settings.aiAssistants.usableActionCount",
+                `${(accessConnection?.usable_tools || []).length} assistant action${(accessConnection?.usable_tools || []).length === 1 ? " is" : "s are"} currently usable with this connection.`
+              )}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
               {t("settings.aiAssistants.scopeRequest", "Ask the assistant to request exactly this scope string:")} <Box component="code" sx={{ wordBreak: "break-word" }}>{desiredScopes.join(" ")}</Box>
             </Typography>
             <Typography variant="body2">
