@@ -93,7 +93,7 @@ describe("SettingsAiAssistants", () => {
     expect(await screen.findByText(/Granted OAuth scopes/i)).toBeTruthy();
     expect(screen.getByText(/not provider verification/i)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Manage access" }));
-    expect(await screen.findByText(/Choose the access you want/i)).toBeTruthy();
+    expect(await screen.findByText(/Choose the access to request/i)).toBeTruthy();
     expect(screen.getByText(/Still missing/i)).toBeTruthy();
     expect(screen.getAllByText(/Create and update customers/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/assistant\.whoami customers\.read customers\.write/i)).toBeTruthy();
