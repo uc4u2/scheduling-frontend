@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -10,9 +13,12 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
+  Radio,
   Stack,
   Typography,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useTranslation } from "react-i18next";
 import { tenantAssistant } from "../../utils/api";
 
@@ -24,7 +30,7 @@ const stateColor = (state) => {
 };
 
 const supportLabel = (support, t) => {
-  if (support === "partially_verified") return t("settings.aiAssistants.support.partial", "Setup documented, plan not verified");
+  if (support === "partially_verified") return t("settings.aiAssistants.support.partial", "Read-only connection observed; broader support not verified");
   if (support === "not_a_tenant_connection") return t("settings.aiAssistants.support.internal", "Not a business connection");
   if (support === "unsupported") return t("settings.aiAssistants.support.unsupported", "Not supported");
   return t("settings.aiAssistants.support.unverified", "Not verified");
@@ -39,6 +45,7 @@ export default function SettingsAiAssistants() {
   const [message, setMessage] = useState(null);
   const [busyId, setBusyId] = useState("");
   const [accessConnection, setAccessConnection] = useState(null);
+  const [desiredProfileKey, setDesiredProfileKey] = useState("manager");
 
   const copyConnectorUrl = async (url) => {
     if (!url || !navigator.clipboard?.writeText) {
@@ -171,39 +178,86 @@ export default function SettingsAiAssistants() {
   const eligible = status.eligible === true && status.permissions;
   const business = status.business;
   const configurationError = status.configuration_error;
+  const profiles = status.access_profiles || [];
+  const desiredProfile = profiles.find((profile) => profile.key === desiredProfileKey) || profiles[0];
+  const scopeDetails = new Map((status.scopes_offered || []).map((item) => [item.scope, item.description]));
+  const grantedScopes = new Set(accessConnection?.scopes || []);
+  const desiredScopes = desiredProfile?.scopes || [];
+  const usableDesiredScopes = desiredScopes.filter((scope) => grantedScopes.has(scope));
+  const missingDesiredScopes = desiredScopes.filter((scope) => !grantedScopes.has(scope));
 
   return (
     <Stack spacing={2}>
-      <Dialog open={Boolean(accessConnection)} onClose={() => setAccessConnection(null)} maxWidth="sm" fullWidth>
+      <Dialog open={Boolean(accessConnection)} onClose={() => setAccessConnection(null)} maxWidth="md" fullWidth>
         <DialogTitle>{t("settings.aiAssistants.manageAccess", "Manage access")}</DialogTitle>
         <DialogContent>
-          <Stack spacing={1.5} sx={{ pt: 1 }}>
+          <Stack spacing={2} sx={{ pt: 1 }}>
             <Typography variant="body2">
               {t(
                 "settings.aiAssistants.manageAccessExplanation",
-                "This connection currently has the permissions shown below. Schedulaa cannot add scopes to its existing tokens."
+                "Choose the access you want the assistant to request. This does not alter the current connection: the assistant must start a new OAuth authorization and you must approve the requested scopes."
               )}
             </Typography>
+            <Stack spacing={1}>
+              {profiles.map((profile) => (
+                <Box
+                  key={profile.key}
+                  sx={{ border: 1, borderColor: desiredProfileKey === profile.key ? "primary.main" : "divider", borderRadius: 1.5, p: 1.25 }}
+                >
+                  <FormControlLabel
+                    control={<Radio checked={desiredProfileKey === profile.key} onChange={() => setDesiredProfileKey(profile.key)} />}
+                    label={<Typography variant="body2" sx={{ fontWeight: 700 }}>{profile.name}</Typography>}
+                  />
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 4 }}>{profile.summary}</Typography>
+                </Box>
+              ))}
+            </Stack>
+            <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1.5, p: 1.5 }}>
+              <Typography variant="subtitle2">{t("settings.aiAssistants.desiredPermissions", "Desired permissions")}</Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {desiredProfile?.name || t("settings.aiAssistants.noPermissions", "None")}
+              </Typography>
+              <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.75} sx={{ mt: 1 }}>
+                {desiredScopes.map((scope) => <Chip key={scope} size="small" label={scopeDetails.get(scope) || scope} />)}
+              </Stack>
+            </Box>
+            <Box>
+              <Typography variant="subtitle2">{t("settings.aiAssistants.usableNow", "Usable now")}</Typography>
+              <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.75} sx={{ mt: 0.75 }}>
+                {usableDesiredScopes.length ? usableDesiredScopes.map((scope) => (
+                  <Chip key={scope} size="small" color="success" label={scopeDetails.get(scope) || scope} />
+                )) : <Typography variant="body2" color="text.secondary">{t("settings.aiAssistants.noneUsable", "None of the selected permissions is on this connection yet.")}</Typography>}
+              </Stack>
+              {missingDesiredScopes.length > 0 && <>
+                <Typography variant="subtitle2" sx={{ mt: 1.25 }}>{t("settings.aiAssistants.stillMissing", "Still missing")}</Typography>
+                <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.75} sx={{ mt: 0.75 }}>
+                  {missingDesiredScopes.map((scope) => (
+                    <Chip key={scope} size="small" color="warning" label={scopeDetails.get(scope) || scope} />
+                  ))}
+                </Stack>
+              </>}
+            </Box>
+            <Alert severity={missingDesiredScopes.length ? "warning" : "success"}>
+              {missingDesiredScopes.length
+                ? t("settings.aiAssistants.accessMissing", "This connection does not yet have all desired permissions. Reauthorize it in your assistant, then refresh this page.")
+                : t("settings.aiAssistants.accessReady", "This connection already has the selected permissions.")}
+            </Alert>
             <Typography variant="body2" color="text.secondary">
-              {t(
-                "settings.aiAssistants.manageAccessSteps",
-                "To request Manager access, reconnect or add Schedulaa from your assistant, then complete the new Schedulaa consent screen. The assistant chooses which scopes to request; you choose which requested scopes to approve."
-              )}
+              {t("settings.aiAssistants.scopeRequest", "Ask the assistant to request exactly this scope string:")} <Box component="code" sx={{ wordBreak: "break-word" }}>{desiredScopes.join(" ")}</Box>
             </Typography>
             <Typography variant="body2">
-              {t("settings.aiAssistants.currentPermissions", "Current permissions")}: {accessConnection?.scopes?.length
-                ? accessConnection.scopes.join(", ")
-                : t("settings.aiAssistants.noPermissions", "None")}
+              {t("settings.aiAssistants.museReauthorization", "Muse: open the existing Connect card again. It starts a new authorization; sign in to Schedulaa and approve only the scopes shown on its consent screen.")}
+            </Typography>
+            <Typography variant="body2">
+              {t("settings.aiAssistants.grokReauthorization", "Grok: use the same working connector's reconnect flow. Schedulaa does not create a Grok deep link or silently extend existing tokens.")}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {t(
-                "settings.aiAssistants.reauthorizationSafety",
-                "A new authorization leaves this connection unchanged. Disconnect it separately if you no longer want it to have its current access."
-              )}
+              {t("settings.aiAssistants.reauthorizationSafety", "A new authorization leaves this connection unchanged. Disconnect it separately if you no longer want it to have its current access.")}
             </Typography>
           </Stack>
         </DialogContent>
         <DialogActions>
+          <Button onClick={load}>{t("common.refresh", "Refresh")}</Button>
           {status.mcp_url && (
             <Button onClick={() => copyConnectorUrl(status.mcp_url)}>
               {t("settings.aiAssistants.copyConnectorUrl", "Copy connector URL")}
@@ -247,7 +301,7 @@ export default function SettingsAiAssistants() {
       {eligible && !configurationError && (
         <Box>
           <Typography variant="subtitle1">
-            {t("settings.aiAssistants.accessHeading", "Choose access in your assistant")}
+            {t("settings.aiAssistants.accessHeading", "Choose access to request")}
           </Typography>
           <Stack spacing={1} sx={{ mt: 1 }}>
             {(status.access_profiles || []).map((profile) => (
@@ -263,10 +317,7 @@ export default function SettingsAiAssistants() {
             ))}
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            {t(
-              "settings.aiAssistants.reconnectHelp",
-              "Connections begin in your assistant. To add Manager access, use that assistant's reconnect or add-connection flow and complete a new Schedulaa authorization. Viewing this option does not change an existing token."
-            )}
+            {t("settings.aiAssistants.reconnectHelp", "Select a profile under a connection’s Manage access button. Connections begin in your assistant; Settings shows the exact scope request and never changes an existing token itself.")}
           </Typography>
           {Number(status.pending_approval_count) > 0 && (
             <Button component="a" href="/manager/ai-assistant-approvals" variant="contained" sx={{ mt: 1 }}>
@@ -308,6 +359,11 @@ export default function SettingsAiAssistants() {
                   "Start this connection inside the assistant. Use its supported remote MCP or connector flow, then sign in to Schedulaa when it opens the consent page."
                 )}
               </Typography>
+              {provider.reauthorization && (
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                  {provider.reauthorization}
+                </Typography>
+              )}
             </Box>
           ))}
         </Stack>
@@ -337,16 +393,8 @@ export default function SettingsAiAssistants() {
                     {connection.account_display_name} · {connection.business_name}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" display="block">
-                    {t("settings.aiAssistants.reportedName", "Name reported by the connector (not verified)")}:{" "}
-                    {connection.reported_client_name || t("settings.aiAssistants.unknownClient", "Unknown")}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
                     {t("settings.aiAssistants.lastRequest", "Last successful assistant request")}:{" "}
                     {connection.last_successful_assistant_request_at || t("settings.aiAssistants.never", "Never")}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    {t("settings.aiAssistants.effectivePermissions", "Effective permissions")}:{" "}
-                    {connection.scopes?.length ? connection.scopes.join(", ") : t("settings.aiAssistants.noPermissions", "None")}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" display="block">
                     {connection.state === "disconnected"
@@ -355,14 +403,6 @@ export default function SettingsAiAssistants() {
                         ? t("settings.aiAssistants.connectionHealthActive", "Connection health: a successful assistant request was recorded")
                         : t("settings.aiAssistants.connectionHealthPending", "Connection health: authorized; waiting for the first assistant request")}
                   </Typography>
-                  {connection.local_protocol_checked_at && (
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      {t(
-                        "settings.aiAssistants.localChecked",
-                        "Local protocol check recorded. This is not provider verification."
-                      )}
-                    </Typography>
-                  )}
                 </Box>
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                   {connection.owned_by_self && connection.state !== "disconnected" && (
@@ -391,14 +431,32 @@ export default function SettingsAiAssistants() {
                   )}
                 </Stack>
               </Stack>
+              <Accordion disableGutters elevation={0} sx={{ mt: 1, borderTop: 1, borderColor: "divider" }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="body2">{t("settings.aiAssistants.advanced", "Advanced")}</Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{ pt: 0 }}>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {t("settings.aiAssistants.reportedName", "Name reported by the connector (not verified)")}: {connection.reported_client_name || t("settings.aiAssistants.unknownClient", "Unknown")}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {t("settings.aiAssistants.effectivePermissions", "Granted OAuth scopes")}: {connection.scopes?.length ? connection.scopes.join(", ") : t("settings.aiAssistants.noPermissions", "None")}
+                  </Typography>
+                  {connection.local_protocol_checked_at && <Typography variant="caption" color="text.secondary" display="block">{t("settings.aiAssistants.localChecked", "Local protocol check recorded. This is not provider verification.")}</Typography>}
+                </AccordionDetails>
+              </Accordion>
             </Box>
           ))}
         </Stack>
       )}
       {eligible && !configurationError && (
-        <Box>
+        <Accordion disableGutters elevation={0} sx={{ borderTop: 1, borderColor: "divider" }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle1">{t("settings.aiAssistants.advancedActivity", "Advanced activity")}</Typography>
+          </AccordionSummary>
+          <AccordionDetails>
           <Divider sx={{ mb: 1 }} />
-          <Typography variant="subtitle1">{t("settings.aiAssistants.activity", "Activity")}</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 700 }}>{t("settings.aiAssistants.activity", "Activity")}</Typography>
           {activity.length === 0 && (
             <Typography variant="body2" color="text.secondary">
               {t("settings.aiAssistants.noActivity", "No assistant activity yet.")}
@@ -413,7 +471,8 @@ export default function SettingsAiAssistants() {
               </Typography>
             ))}
           </Stack>
-        </Box>
+          </AccordionDetails>
+        </Accordion>
       )}
     </Stack>
   );

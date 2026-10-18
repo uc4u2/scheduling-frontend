@@ -47,10 +47,14 @@ describe("SettingsAiAssistants", () => {
       account: { id: 1, display_name: "Ada Owner" },
       business: { id: 4, name: "Salon", timezone: "America/Toronto" },
       permissions: { is_manager: true, is_owner: true, can_manage_integrations: true },
-      scopes_offered: [{ scope: "customers.read", description: "Find customers and view their name" }],
+      scopes_offered: [
+        { scope: "assistant.whoami", description: "See the connected account" },
+        { scope: "customers.read", description: "Find customers and view their name" },
+        { scope: "customers.write", description: "Create and update customers" },
+      ],
       access_profiles: [
-        { key: "read_only", name: "Read-only access", summary: "Read customer names.", requires_reauthorization: false },
-        { key: "manager", name: "Manager access", summary: "Request supported manager actions.", requires_reauthorization: true },
+        { key: "read_only", name: "Read-only access", summary: "Read customer names.", scopes: ["assistant.whoami", "customers.read"], requires_reauthorization: false },
+        { key: "manager", name: "Manager access", summary: "Request supported manager actions.", scopes: ["assistant.whoami", "customers.read", "customers.write"], requires_reauthorization: true },
       ],
       providers: [
         {
@@ -83,12 +87,19 @@ describe("SettingsAiAssistants", () => {
     expect(await screen.findByText(/Business to connect/i)).toBeTruthy();
     expect(screen.getAllByText(/Salon/).length).toBeGreaterThan(0);
     expect(screen.getByText(/not yet verified/i)).toBeTruthy();
-    expect(screen.getByText(/not provider verification/i)).toBeTruthy();
     expect(screen.getByText("Manager access")).toBeTruthy();
     expect(screen.getByText(/New authorization required/i)).toBeTruthy();
-    expect(screen.getByText(/Effective permissions/i)).toBeTruthy();
+    expect(screen.queryByText(/Granted OAuth scopes/i)).toBeNull();
+    fireEvent.click(screen.getByText("Advanced"));
+    expect(await screen.findByText(/Granted OAuth scopes/i)).toBeTruthy();
+    expect(screen.getByText(/not provider verification/i)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Manage access" }));
-    expect(await screen.findByText(/Schedulaa cannot add scopes to its existing tokens/i)).toBeTruthy();
+    expect(await screen.findByText(/Choose the access you want/i)).toBeTruthy();
+    expect(screen.getByText(/Still missing/i)).toBeTruthy();
+    expect(screen.getByText(/Create and update customers/i)).toBeTruthy();
+    expect(screen.getByText(/assistant\.whoami customers\.read customers\.write/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await waitFor(() => expect(mockStatus).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(mockActivity).toHaveBeenCalled());
   });
 
