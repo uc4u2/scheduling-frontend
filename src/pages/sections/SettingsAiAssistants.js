@@ -36,6 +36,16 @@ const supportLabel = (support, t) => {
   return t("settings.aiAssistants.support.unverified", "Not verified");
 };
 
+const sectionSx = {
+  border: 1,
+  borderColor: "divider",
+  borderRadius: 2,
+  bgcolor: "background.paper",
+  p: { xs: 1.5, sm: 2 },
+};
+
+const scopePreview = (scopes, details, limit = 4) => scopes.slice(0, limit).map((scope) => details.get(scope) || scope);
+
 export default function SettingsAiAssistants() {
   const { t } = useTranslation();
   const [status, setStatus] = useState(null);
@@ -186,6 +196,19 @@ export default function SettingsAiAssistants() {
   const usableDesiredScopes = desiredScopes.filter((scope) => grantedScopes.has(scope));
   const missingDesiredScopes = desiredScopes.filter((scope) => !grantedScopes.has(scope));
 
+  const copyText = async (value, successText) => {
+    if (!value || !navigator.clipboard?.writeText) {
+      setMessage({ severity: "info", text: t("settings.aiAssistants.copyUnavailable", "Copy is not available in this browser. Select the text below.") });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(value);
+      setMessage({ severity: "success", text: successText });
+    } catch (_error) {
+      setMessage({ severity: "info", text: t("settings.aiAssistants.copyUnavailable", "Copy is not available in this browser. Select the text below.") });
+    }
+  };
+
   return (
     <Stack spacing={2}>
       <Dialog open={Boolean(accessConnection)} onClose={() => setAccessConnection(null)} maxWidth="md" fullWidth>
@@ -198,11 +221,11 @@ export default function SettingsAiAssistants() {
                 "Choose the access you want the assistant to request. This does not alter the current connection: the assistant must start a new OAuth authorization and you must approve the requested scopes."
               )}
             </Typography>
-            <Stack spacing={1}>
+            <Stack spacing={1.25}>
               {profiles.map((profile) => (
                 <Box
                   key={profile.key}
-                  sx={{ border: 1, borderColor: desiredProfileKey === profile.key ? "primary.main" : "divider", borderRadius: 1.5, p: 1.25 }}
+                  sx={{ border: 1, borderColor: desiredProfileKey === profile.key ? "primary.main" : "divider", borderRadius: 2, p: 1.25, bgcolor: desiredProfileKey === profile.key ? "action.selected" : "background.paper" }}
                 >
                   <FormControlLabel
                     control={<Radio checked={desiredProfileKey === profile.key} onChange={() => setDesiredProfileKey(profile.key)} />}
@@ -212,28 +235,34 @@ export default function SettingsAiAssistants() {
                 </Box>
               ))}
             </Stack>
-            <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1.5, p: 1.5 }}>
+            <Box sx={{ border: 1, borderColor: "divider", borderRadius: 2, p: 1.5 }}>
               <Typography variant="subtitle2">{t("settings.aiAssistants.desiredPermissions", "Desired permissions")}</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 {desiredProfile?.name || t("settings.aiAssistants.noPermissions", "None")}
               </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {desiredScopes.length} permission{desiredScopes.length === 1 ? "" : "s"} requested. Sensitive actions still require a separate in-app approval.
+              </Typography>
               <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.75} sx={{ mt: 1 }}>
-                {desiredScopes.map((scope) => <Chip key={scope} size="small" label={scopeDetails.get(scope) || scope} />)}
+                {scopePreview(desiredScopes, scopeDetails).map((label) => <Chip key={label} size="small" label={label} />)}
+                {desiredScopes.length > 4 && <Chip size="small" variant="outlined" label={`+${desiredScopes.length - 4} more`} />}
               </Stack>
             </Box>
             <Box>
               <Typography variant="subtitle2">{t("settings.aiAssistants.usableNow", "Usable now")}</Typography>
               <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.75} sx={{ mt: 0.75 }}>
-                {usableDesiredScopes.length ? usableDesiredScopes.map((scope) => (
-                  <Chip key={scope} size="small" color="success" label={scopeDetails.get(scope) || scope} />
+                {usableDesiredScopes.length ? scopePreview(usableDesiredScopes, scopeDetails).map((label) => (
+                  <Chip key={label} size="small" color="success" label={label} />
                 )) : <Typography variant="body2" color="text.secondary">{t("settings.aiAssistants.noneUsable", "None of the selected permissions is on this connection yet.")}</Typography>}
+                {usableDesiredScopes.length > 4 && <Chip size="small" color="success" variant="outlined" label={`+${usableDesiredScopes.length - 4} more`} />}
               </Stack>
               {missingDesiredScopes.length > 0 && <>
                 <Typography variant="subtitle2" sx={{ mt: 1.25 }}>{t("settings.aiAssistants.stillMissing", "Still missing")}</Typography>
                 <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.75} sx={{ mt: 0.75 }}>
-                  {missingDesiredScopes.map((scope) => (
-                    <Chip key={scope} size="small" color="warning" label={scopeDetails.get(scope) || scope} />
+                  {scopePreview(missingDesiredScopes, scopeDetails).map((label) => (
+                    <Chip key={label} size="small" color="warning" label={label} />
                   ))}
+                  {missingDesiredScopes.length > 4 && <Chip size="small" color="warning" variant="outlined" label={`+${missingDesiredScopes.length - 4} more`} />}
                 </Stack>
               </>}
             </Box>
@@ -248,9 +277,6 @@ export default function SettingsAiAssistants() {
                 `${(accessConnection?.usable_tools || []).length} assistant action${(accessConnection?.usable_tools || []).length === 1 ? " is" : "s are"} currently usable with this connection.`
               )}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {t("settings.aiAssistants.scopeRequest", "Ask the assistant to request exactly this scope string:")} <Box component="code" sx={{ wordBreak: "break-word" }}>{desiredScopes.join(" ")}</Box>
-            </Typography>
             <Typography variant="body2">
               {t("settings.aiAssistants.museReauthorization", "Muse: open the existing Connect card again. It starts a new authorization; sign in to Schedulaa and approve only the scopes shown on its consent screen.")}
             </Typography>
@@ -260,6 +286,17 @@ export default function SettingsAiAssistants() {
             <Typography variant="caption" color="text.secondary">
               {t("settings.aiAssistants.reauthorizationSafety", "A new authorization leaves this connection unchanged. Disconnect it separately if you no longer want it to have its current access.")}
             </Typography>
+            <Accordion disableGutters elevation={0} sx={{ border: 1, borderColor: "divider", borderRadius: 1.5, "&:before": { display: "none" } }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography variant="body2">Exact technical scope request</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ pt: 0 }}>
+                <Stack spacing={1}>
+                  <Box component="code" sx={{ display: "block", p: 1, borderRadius: 1, bgcolor: "action.hover", fontSize: "0.76rem", wordBreak: "break-word" }}>{desiredScopes.join(" ")}</Box>
+                  <Button size="small" variant="outlined" onClick={() => copyText(desiredScopes.join(" "), "Requested scope string copied.")} sx={{ alignSelf: "flex-start" }}>Copy scope request</Button>
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -292,7 +329,7 @@ export default function SettingsAiAssistants() {
         </Alert>
       )}
       {eligible && !configurationError && business && (
-        <Box>
+        <Box sx={sectionSx}>
           <Typography variant="subtitle1">
             {t("settings.aiAssistants.businessHeading", "Business to connect")}
           </Typography>
@@ -305,13 +342,13 @@ export default function SettingsAiAssistants() {
         </Box>
       )}
       {eligible && !configurationError && (
-        <Box>
+        <Box sx={sectionSx}>
           <Typography variant="subtitle1">
             {t("settings.aiAssistants.accessHeading", "Choose access to request")}
           </Typography>
           <Stack spacing={1} sx={{ mt: 1 }}>
             {(status.access_profiles || []).map((profile) => (
-              <Box key={profile.key} sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 1.25 }}>
+              <Box key={profile.key} sx={{ border: 1, borderColor: "divider", borderRadius: 1.5, p: 1.25, bgcolor: "action.hover" }}>
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                   <Typography variant="body2" sx={{ fontWeight: 700 }}>{profile.name}</Typography>
                   {profile.requires_reauthorization && (
@@ -346,10 +383,10 @@ export default function SettingsAiAssistants() {
         </Box>
       )}
       {eligible && !configurationError && (
-        <Stack spacing={1}>
+        <Stack spacing={1.25} sx={sectionSx}>
           <Typography variant="subtitle1">{t("settings.aiAssistants.providers", "Assistants")}</Typography>
           {(status.providers || []).map((provider) => (
-            <Box key={provider.key}>
+            <Box key={provider.key} sx={{ borderBottom: 1, borderColor: "divider", pb: 1.25, "&:last-child": { borderBottom: 0, pb: 0 } }}>
               <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                 <Typography variant="body2" sx={{ fontWeight: 700 }}>
                   {provider.name}
@@ -375,7 +412,7 @@ export default function SettingsAiAssistants() {
         </Stack>
       )}
       {eligible && !configurationError && (
-        <Stack spacing={1}>
+        <Stack spacing={1.25} sx={sectionSx}>
           <Typography variant="subtitle1">{t("settings.aiAssistants.connections", "Connections")}</Typography>
           {(status.connections || []).length === 0 && (
             <Alert severity="info">
@@ -383,7 +420,7 @@ export default function SettingsAiAssistants() {
             </Alert>
           )}
           {(status.connections || []).map((connection) => (
-            <Box key={connection.id} sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 1.5 }}>
+            <Box key={connection.id} sx={{ border: 1, borderColor: connection.state === "disconnected" ? "divider" : "primary.light", borderRadius: 2, p: 1.5, bgcolor: connection.state === "disconnected" ? "action.hover" : "background.default" }}>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between">
                 <Box>
                   <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -414,6 +451,7 @@ export default function SettingsAiAssistants() {
                   {connection.owned_by_self && connection.state !== "disconnected" && (
                     <Button
                       variant="outlined"
+                      size="small"
                       onClick={() => protocolTest(connection.id)}
                       disabled={busyId === connection.id}
                     >
@@ -421,7 +459,7 @@ export default function SettingsAiAssistants() {
                     </Button>
                   )}
                   {connection.owned_by_self && connection.state !== "disconnected" && status.mcp_url && (
-                    <Button variant="outlined" onClick={() => setAccessConnection(connection)} disabled={busyId === connection.id}>
+                    <Button variant="outlined" size="small" onClick={() => setAccessConnection(connection)} disabled={busyId === connection.id}>
                       {t("settings.aiAssistants.manageAccess", "Manage access")}
                     </Button>
                   )}
@@ -429,6 +467,7 @@ export default function SettingsAiAssistants() {
                     <Button
                       color="warning"
                       variant="contained"
+                      size="small"
                       onClick={() => disconnect(connection.id)}
                       disabled={busyId === connection.id}
                     >
