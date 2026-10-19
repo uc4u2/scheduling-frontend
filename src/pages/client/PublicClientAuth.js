@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -20,12 +20,12 @@ import {
   Typography,
 } from "@mui/material";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
-import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
-import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
-import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import ArrowForwardRoundedIcon from "@mui-icons-material/ArrowForwardRounded";
+import CalendarMonthOutlinedIcon from "@mui-icons-material/CalendarMonthOutlined";
+import CheckCircleOutlineRoundedIcon from "@mui-icons-material/CheckCircleOutlineRounded";
+import LockOutlinedIcon from "@mui-icons-material/LockOutlined";
+import VisibilityOffOutlinedIcon from "@mui-icons-material/VisibilityOffOutlined";
+import VisibilityOutlinedIcon from "@mui-icons-material/VisibilityOutlined";
 import { api } from "../../utils/api";
 import { getTenantHostMode } from "../../utils/tenant";
 import TimezoneSelect from "../../components/TimezoneSelect";
@@ -175,6 +175,26 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
       normalizeClientOrderReturnPath(requested, slug)
     );
   }, [returnTo, slug]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("token") || "";
+    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const storedSite = (localStorage.getItem("site") || "").trim();
+    const tenantMatches = !slug || !storedSite || storedSite === slug;
+    if (!(token && role === "client" && tenantMatches)) return;
+    publishClientSessionState(true, { reason: "existing-client-session" });
+    const embedded = new URLSearchParams(window.location.search || "").get("embed") === "1";
+    const target = resolveClientAuthCompletionPath({
+      returnTo: returnTo || trustedReturnTo,
+      embedded,
+      slug,
+      activeSearch: window.location.search,
+      hostMode: getTenantHostMode(),
+    });
+    const here = `${window.location.pathname}${window.location.search || ""}`;
+    if (target && target !== here) window.location.assign(target);
+  }, [returnTo, slug, trustedReturnTo]);
   const seoTitle = useMemo(() => {
     const action = tab === "register" ? "Sign Up" : "Login";
     const siteLabel = slug ? `${slug} client account` : "Client account";
@@ -528,7 +548,7 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
                 endIcon={!busy ? <ArrowForwardRoundedIcon /> : null}
                 sx={{ minHeight: 50, mt: 0.5, fontWeight: 800, textTransform: "none" }}
               >
-                {busy ? (tab === "login" ? "Signing in…" : "Creating account…") : (tab === "login" ? "Sign in" : "Create account")}
+                {busy ? (tab === "login" ? "Signing in\u2026" : "Creating account\u2026") : (tab === "login" ? "Sign in" : "Create account")}
               </Button>
 
               <Typography variant="body2" align="center" sx={{ color: "text.secondary", pt: 0.5 }}>
@@ -545,7 +565,7 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
         <DialogTitle sx={{ pb: 1, fontWeight: 750 }}>Reset your password</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ color: "text.secondary", mb: 1 }}>
-            Enter the email connected to your client account. We’ll send reset instructions if the account exists.
+            Enter the email connected to your client account. We\u2019ll send reset instructions if the account exists.
           </Typography>
           {forgotError && <Alert severity="error" sx={{ mb: 2 }}>{forgotError}</Alert>}
           {forgotMessage && <Alert severity="success" sx={{ mb: 2 }}>{forgotMessage}</Alert>}
@@ -565,7 +585,7 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
             Cancel
           </Button>
           <Button variant="contained" onClick={doForgotPassword} disabled={forgotBusy}>
-            {forgotBusy ? "Sending…" : "Send reset email"}
+            {forgotBusy ? "Sending\u2026" : "Send reset email"}
           </Button>
         </DialogActions>
       </Dialog>
