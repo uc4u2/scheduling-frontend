@@ -5094,6 +5094,12 @@ const NewManagementDashboard = ({
     boxSizing: "border-box",
     top: headerOffset,
     height: `calc(100vh - ${headerOffset}px)`,
+    "@supports (height: 100dvh)": {
+      height: `calc(100dvh - ${headerOffset}px)`,
+    },
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
     borderRight: "1px solid",
     borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.2 : 0.1),
     backgroundColor: theme.palette.background.paper,
@@ -5107,6 +5113,7 @@ const NewManagementDashboard = ({
     <>
       <Toolbar
         sx={{
+          flexShrink: 0,
           display: "flex",
           alignItems: "center",
           justifyContent: drawerExpanded ? "space-between" : "center",
@@ -5137,8 +5144,26 @@ const NewManagementDashboard = ({
           </IconButton>
         )}
       </Toolbar>
-      <Divider sx={{ borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.1) }} />
-      <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", height: "100%", overflowY: "auto", pt: 0.75 }}>
+      <Divider
+        sx={{
+          flexShrink: 0,
+          borderColor: alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.18 : 0.1),
+        }}
+      />
+      <Box
+        sx={{
+          flex: "1 1 auto",
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          overflowY: "auto",
+          overscrollBehaviorY: "contain",
+          WebkitOverflowScrolling: "touch",
+          scrollbarGutter: "stable",
+          pt: 0.75,
+          pb: isMobileViewport ? "calc(12px + env(safe-area-inset-bottom, 0px))" : 0,
+        }}
+      >
         {isMobileViewport && (
           <TextField
             value={navigationQuery}
