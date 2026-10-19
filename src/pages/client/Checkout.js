@@ -14,6 +14,11 @@ import {
 } from "../../utils/hostedCheckout";
 import { CartTypes, loadCart, saveCart, clearCart, setCartTenantContext } from "../../utils/cart";
 import { getTenantHostMode } from "../../utils/tenant";
+import {
+  persistVerifiedClientSession,
+  publishClientSessionState,
+  verifyClientSessionForTenant,
+} from "../../utils/clientSession";
 
 import {
   Autocomplete,
@@ -925,20 +930,32 @@ export function CheckoutFormCore({
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!slugLocal) return undefined;
+    let active = true;
     (async () => {
-      try {
-        const { data } = await apiClient.get("/me", { headers: { Authorization: `Bearer ${token}` } });
-        if (!data?.email) return;
-        setClient(data);
-        const full = data.full_name || `${data.first_name || ""} ${data.last_name || ""}`.trim();
-        setGuest({ name: full, email: data.email });
-      } catch {
-        setClient(null);
+      const result = await verifyClientSessionForTenant(slugLocal, { apiClient });
+      if (!active) return;
+      if (result.signedIn && result.profile?.email) {
+        setClient(result.profile);
+        setGuest({ name: result.profile.name || "", email: result.profile.email });
+        publishClientSessionState(true, {
+          reason: "verified-client-session",
+          tenantSlug: slugLocal,
+        });
+        return;
+      }
+      setClient(null);
+      if (result.reason && result.reason !== "missing-token") {
+        publishClientSessionState(false, {
+          reason: result.reason,
+          tenantSlug: slugLocal,
+        });
       }
     })();
-  }, []);
+    return () => {
+      active = false;
+    };
+  }, [slugLocal]);
 
   useEffect(() => {
     try {
@@ -2964,39 +2981,23 @@ export function CheckoutFormCore({
     }
   };
 
-  const syncClientFromToken = (token) => {
-    apiClient
-      .get("/me", { headers: { Authorization: `Bearer ${token}` } })
-      .then(({ data }) => {
-        if (!data) {
-          setClient(null);
-          setGuest({ name: "", email: "" });
-          return;
-        }
-        setClient(data);
-        const fullName = data.full_name || `${data.first_name || ""} ${data.last_name || ""}`.trim();
-        setGuest({ name: fullName, email: data.email });
-      })
-      .catch(() => {
-        setClient(null);
-        setGuest({ name: "", email: "" });
-      });
+  const establishCheckoutClientSession = (token) => {
+    const tenantSlug = slugLocal || companySlug || "";
+    persistVerifiedClientSession(token, tenantSlug);
+    publishClientSessionState(true, { reason: "authenticated", tenantSlug });
+    verifyClientSessionForTenant(tenantSlug, { apiClient }).then((result) => {
+      if (!result.signedIn || !result.profile?.email) return;
+      setClient(result.profile);
+      setGuest({ name: result.profile.name || "", email: result.profile.email });
+    });
   };
 
   const handleLoginSuccess = (token) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("role", "client");
-    localStorage.setItem("clientToken", token);
-    if (slugLocal || companySlug) localStorage.setItem("site", slugLocal || companySlug);
-    syncClientFromToken(token);
+    establishCheckoutClientSession(token);
   };
 
   const handleRegisterSuccess = (token) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("role", "client");
-    localStorage.setItem("clientToken", token);
-    if (slugLocal || companySlug) localStorage.setItem("site", slugLocal || companySlug);
-    syncClientFromToken(token);
+    establishCheckoutClientSession(token);
   };
 
   const handleContinueProductShopping = () => {
