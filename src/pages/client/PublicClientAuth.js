@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -175,6 +175,26 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
       normalizeClientOrderReturnPath(requested, slug)
     );
   }, [returnTo, slug]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("token") || "";
+    const role = (localStorage.getItem("role") || "").toLowerCase();
+    const storedSite = (localStorage.getItem("site") || "").trim();
+    const tenantMatches = !slug || !storedSite || storedSite === slug;
+    if (!(token && role === "client" && tenantMatches)) return;
+    publishClientSessionState(true, { reason: "existing-client-session" });
+    const embedded = new URLSearchParams(window.location.search || "").get("embed") === "1";
+    const target = resolveClientAuthCompletionPath({
+      returnTo: returnTo || trustedReturnTo,
+      embedded,
+      slug,
+      activeSearch: window.location.search,
+      hostMode: getTenantHostMode(),
+    });
+    const here = `${window.location.pathname}${window.location.search || ""}`;
+    if (target && target !== here) window.location.assign(target);
+  }, [returnTo, slug, trustedReturnTo]);
   const seoTitle = useMemo(() => {
     const action = tab === "register" ? "Sign Up" : "Login";
     const siteLabel = slug ? `${slug} client account` : "Client account";
