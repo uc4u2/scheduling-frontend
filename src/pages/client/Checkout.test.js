@@ -1273,12 +1273,79 @@ describe("CheckoutFormCore", () => {
       configurable: true,
       value: "https://www.lumiereprivatesalon.com/basket",
     });
+    let releaseMembership;
+    const membership = new Promise((resolve) => {
+      releaseMembership = () => resolve({
+        data: { id: 9, email: "ada@example.com", full_name: "Ada Client" },
+      });
+    });
     mockApiPost.mockResolvedValue({ data: { access_token: "checkout-client-token" } });
     mockApiGet.mockImplementation((url) => {
+      if (url === "/me") return membership;
+      return Promise.resolve({ data: [] });
+    });
+
+    render(
+      <CheckoutFormCore
+        companySlug="beauty-salon"
+        paymentsEnabled={false}
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "off" }}
+      />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /already have an account\? log in/i }));
+    fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: "ada@example.com" } });
+    fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Login" }));
+
+    await waitFor(() => expect(mockApiGet).toHaveBeenCalledWith("/me", expect.objectContaining({
+      params: { slug: "beauty-salon" },
+      noCompanyHeader: true,
+    })));
+    expect(parent.postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ signedIn: true }),
+      expect.anything(),
+    );
+    expect(window.localStorage.getItem("token")).not.toBe("checkout-client-token");
+    releaseMembership();
+
+    await waitFor(() => expect(parent.postMessage).toHaveBeenCalledWith({
+      type: "schedulaa:client-session",
+      signedIn: true,
+      reason: "authenticated",
+      tenantSlug: "beauty-salon",
+    }, "https://www.lumiereprivatesalon.com"));
+    expect(window.localStorage.getItem("token")).toBe("checkout-client-token");
+    expect(window.localStorage.getItem("clientToken")).toBe("checkout-client-token");
+    expect(window.localStorage.getItem("role")).toBe("client");
+    expect(window.localStorage.getItem("site")).toBe("beauty-salon");
+    expect(JSON.stringify(parent.postMessage.mock.calls)).not.toContain("checkout-client-token");
+    expect(await screen.findByDisplayValue("Ada Client")).toBeInTheDocument();
+
+    if (previousParent) Object.defineProperty(window, "parent", previousParent);
+    if (previousReferrer) Object.defineProperty(document, "referrer", previousReferrer);
+  });
+
+  test("does not publish a signed-in checkout session when tenant verification fails", async () => {
+    const previousParent = Object.getOwnPropertyDescriptor(window, "parent");
+    const previousReferrer = Object.getOwnPropertyDescriptor(document, "referrer");
+    const parent = { postMessage: jest.fn() };
+    Object.defineProperty(window, "parent", { configurable: true, value: parent });
+    Object.defineProperty(document, "referrer", {
+      configurable: true,
+      value: "https://www.lumiereprivatesalon.com/basket",
+    });
+    window.localStorage.setItem("token", "other-tenant-token");
+    window.localStorage.setItem("clientToken", "other-tenant-token");
+    window.localStorage.setItem("role", "client");
+    window.localStorage.setItem("site", "other-salon");
+    mockApiPost.mockResolvedValue({ data: { access_token: "rejected-client-token" } });
+    mockApiGet.mockImplementation((url) => {
       if (url === "/me") {
-        return Promise.resolve({
-          data: { id: 9, email: "ada@example.com", full_name: "Ada Client" },
-        });
+        return Promise.reject({ response: { status: 404, data: { error: "Client not found" } } });
       }
       return Promise.resolve({ data: [] });
     });
@@ -1299,18 +1366,23 @@ describe("CheckoutFormCore", () => {
     fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: "secret" } });
     fireEvent.click(screen.getByRole("button", { name: "Login" }));
 
-    await waitFor(() => expect(parent.postMessage).toHaveBeenCalledWith({
+    expect(await screen.findByText(/we could not confirm this account for this business/i)).toBeInTheDocument();
+    expect(screen.queryByText(/client not found/i)).not.toBeInTheDocument();
+    expect(parent.postMessage).toHaveBeenCalledWith({
       type: "schedulaa:client-session",
-      signedIn: true,
-      reason: "authenticated",
+      signedIn: false,
+      reason: "wrong-tenant",
       tenantSlug: "beauty-salon",
-    }, "https://www.lumiereprivatesalon.com"));
-    expect(window.localStorage.getItem("token")).toBe("checkout-client-token");
-    expect(window.localStorage.getItem("clientToken")).toBe("checkout-client-token");
+    }, "https://www.lumiereprivatesalon.com");
+    expect(parent.postMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ signedIn: true }),
+      expect.anything(),
+    );
+    expect(screen.getByLabelText(/your name/i)).toHaveValue("");
+    expect(window.localStorage.getItem("token")).toBe("other-tenant-token");
+    expect(window.localStorage.getItem("clientToken")).toBe("other-tenant-token");
     expect(window.localStorage.getItem("role")).toBe("client");
-    expect(window.localStorage.getItem("site")).toBe("beauty-salon");
-    expect(JSON.stringify(parent.postMessage.mock.calls)).not.toContain("checkout-client-token");
-    expect(await screen.findByDisplayValue("Ada Client")).toBeInTheDocument();
+    expect(window.localStorage.getItem("site")).toBe("other-salon");
 
     if (previousParent) Object.defineProperty(window, "parent", previousParent);
     if (previousReferrer) Object.defineProperty(document, "referrer", previousReferrer);
