@@ -32,7 +32,11 @@ import TimezoneSelect from "../../components/TimezoneSelect";
 import { formatTimezoneLabel, getUserTimezone } from "../../utils/timezone";
 import Meta from "../../components/Meta";
 import { buildMarketingLegalUrl } from "../../config/origins";
-import { publishClientSessionState } from "../../utils/clientSession";
+import {
+  persistVerifiedClientSession,
+  publishClientSessionState,
+  verifyClientSessionForTenant,
+} from "../../utils/clientSession";
 import {
   normalizeClientOrderReturnPath,
   normalizePackageCheckoutReturnPath,
@@ -177,23 +181,34 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
   }, [returnTo, slug]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const token = localStorage.getItem("token") || "";
-    const role = (localStorage.getItem("role") || "").toLowerCase();
-    const storedSite = (localStorage.getItem("site") || "").trim();
-    const tenantMatches = !slug || !storedSite || storedSite === slug;
-    if (!(token && role === "client" && tenantMatches)) return;
-    publishClientSessionState(true, { reason: "existing-client-session" });
-    const embedded = new URLSearchParams(window.location.search || "").get("embed") === "1";
-    const target = resolveClientAuthCompletionPath({
-      returnTo: returnTo || trustedReturnTo,
-      embedded,
-      slug,
-      activeSearch: window.location.search,
-      hostMode: getTenantHostMode(),
-    });
-    const here = `${window.location.pathname}${window.location.search || ""}`;
-    if (target && target !== here) window.location.assign(target);
+    if (typeof window === "undefined") return undefined;
+    let active = true;
+    (async () => {
+      const result = await verifyClientSessionForTenant(slug, { apiClient: api });
+      if (!active || !result.signedIn) {
+        if (active && result.reason && result.reason !== "missing-token") {
+          publishClientSessionState(false, { reason: result.reason, tenantSlug: slug || "" });
+        }
+        return;
+      }
+      publishClientSessionState(true, {
+        reason: "existing-client-session",
+        tenantSlug: slug || result.tenantSlug,
+      });
+      const embedded = new URLSearchParams(window.location.search || "").get("embed") === "1";
+      const target = resolveClientAuthCompletionPath({
+        returnTo: returnTo || trustedReturnTo,
+        embedded,
+        slug,
+        activeSearch: window.location.search,
+        hostMode: getTenantHostMode(),
+      });
+      const here = `${window.location.pathname}${window.location.search || ""}`;
+      if (target && target !== here) window.location.assign(target);
+    })();
+    return () => {
+      active = false;
+    };
   }, [returnTo, slug, trustedReturnTo]);
   const seoTitle = useMemo(() => {
     const action = tab === "register" ? "Sign Up" : "Login";
@@ -211,13 +226,11 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const finish = (token) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("role", "client");
-    if (slug) localStorage.setItem("site", slug);
+    persistVerifiedClientSession(token, slug);
     // Next public pages live on a different origin from this legacy iframe.
     // Notify only the presentation shell that a client session now exists;
     // authentication remains entirely in the existing legacy client flow.
-    publishClientSessionState(true, { reason: "authenticated" });
+    publishClientSessionState(true, { reason: "authenticated", tenantSlug: slug || "" });
     const embedded =
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search || "").get("embed") === "1";
