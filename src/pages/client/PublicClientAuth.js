@@ -33,7 +33,7 @@ import { formatTimezoneLabel, getUserTimezone } from "../../utils/timezone";
 import Meta from "../../components/Meta";
 import { buildMarketingLegalUrl } from "../../config/origins";
 import {
-  persistVerifiedClientSession,
+  confirmIssuedClientSession,
   publishClientSessionState,
   verifyClientSessionForTenant,
 } from "../../utils/clientSession";
@@ -225,12 +225,15 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
   const [phone, setPhone] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const finish = (token) => {
-    persistVerifiedClientSession(token, slug);
+  const finish = async (token) => {
+    const result = await confirmIssuedClientSession(token, slug, { apiClient: api });
+    if (!result.signedIn) {
+      setError(result.message);
+      return;
+    }
     // Next public pages live on a different origin from this legacy iframe.
     // Notify only the presentation shell that a client session now exists;
     // authentication remains entirely in the existing legacy client flow.
-    publishClientSessionState(true, { reason: "authenticated", tenantSlug: slug || "" });
     const embedded =
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search || "").get("embed") === "1";
@@ -251,7 +254,7 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
         email, password, role: "client", timezone, company_slug: slug || undefined
       }, { noAuth: true, noCompanyHeader: true });
       if (!data?.access_token) throw new Error("No token");
-      finish(data.access_token);
+      await finish(data.access_token);
     } catch (e) {
       setError(e?.response?.data?.error || "Login failed.");
     } finally { setBusy(false); }
@@ -294,7 +297,7 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
         email, password, role: "client", timezone, company_slug: slug || undefined
       }, { noAuth: true, noCompanyHeader: true });
       if (!data?.access_token) throw new Error("No token");
-      finish(data.access_token);
+      await finish(data.access_token);
     } catch (e) {
       const data = e?.response?.data;
       if (data?.error === "account_exists") {
