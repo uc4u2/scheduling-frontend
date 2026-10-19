@@ -136,8 +136,12 @@ A browser session is a client session for the current tenant only after
 `verifyClientSessionForTenant` confirms a client credential against the existing
 `GET /me?slug=<tenant>` membership contract. Manager, employee, platform, and
 unknown credentials are not client sessions and are not sent to `/me`. Login
-and registration publish `signedIn=true` with the tenant slug; explicit logout
-and a verified rejection of the active client token publish `signedIn=false`.
+and registration may hold a newly issued token only long enough to call that
+check. They publish `signedIn=true` with the tenant slug only after
+verification succeeds. A failed check publishes `signedIn=false` for that
+tenant and does not replace another tenant's session or a newer login. Explicit
+logout and a verified rejection of the active client token also publish
+`signedIn=false`.
 The parent notification uses the referrer origin and never includes a token.
 Embedded public pages answer `schedulaa:client-session-request` with signed-in
 state and tenant slug only. Direct React navigation returns to
