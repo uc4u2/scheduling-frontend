@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import PublicClientAuth, { resolveClientAuthCompletionPath } from "./PublicClientAuth";
 import { api } from "../../utils/api";
+import { CLIENT_SESSION_STATE_EVENT } from "../../utils/clientSession";
 
 jest.mock("../../utils/api", () => ({
   api: { post: jest.fn() },
@@ -57,6 +58,62 @@ describe("PublicClientAuth", () => {
     fireEvent.click(screen.getByRole("button", { name: "Show password" }));
     expect(password).toHaveAttribute("type", "text");
     expect(screen.getByRole("button", { name: "Hide password" })).toBeInTheDocument();
+  });
+
+  it("announces an existing same-tenant session and opens My Bookings instead of another login form", async () => {
+    const assign = jest.fn();
+    const originalLocation = window.location;
+    const sessionListener = jest.fn();
+    localStorage.setItem("token", "existing-client-token");
+    localStorage.setItem("role", "client");
+    localStorage.setItem("site", "web-design");
+    window.addEventListener(CLIENT_SESSION_STATE_EVENT, sessionListener);
+    delete window.location;
+    window.location = {
+      ...originalLocation,
+      pathname: "/login",
+      search: "?site=web-design",
+      assign,
+    };
+
+    try {
+      render(<PublicClientAuth slug="web-design" />);
+
+      await waitFor(() => expect(assign).toHaveBeenCalledWith("/dashboard?site=web-design"));
+      expect(sessionListener).toHaveBeenCalledWith(expect.objectContaining({
+        detail: expect.objectContaining({
+          signedIn: true,
+          reason: "existing-client-session",
+        }),
+      }));
+    } finally {
+      window.removeEventListener(CLIENT_SESSION_STATE_EVENT, sessionListener);
+      window.location = originalLocation;
+    }
+  });
+
+  it("does not present a client session from another tenant as signed in", () => {
+    const assign = jest.fn();
+    const originalLocation = window.location;
+    localStorage.setItem("token", "other-tenant-token");
+    localStorage.setItem("role", "client");
+    localStorage.setItem("site", "other-tenant");
+    delete window.location;
+    window.location = {
+      ...originalLocation,
+      pathname: "/login",
+      search: "?site=web-design",
+      assign,
+    };
+
+    try {
+      render(<PublicClientAuth slug="web-design" />);
+
+      expect(assign).not.toHaveBeenCalled();
+      expect(screen.getByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+    } finally {
+      window.location = originalLocation;
+    }
   });
 
   it("submits the login form from its primary action without changing auth semantics", async () => {
