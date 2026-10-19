@@ -132,10 +132,17 @@ These were audited and left unchanged because they were already sufficiently slu
 ### Client session lifecycle
 
 `frontend/src/utils/clientSession.js` is the shared presentation/session bridge.
-Login and registration publish `signedIn=true`; explicit logout and a verified
-rejection of the active client token publish `signedIn=false`. Direct React
-navigation returns to `/login?site=<tenant>&client=1`; embedded navigation also
-preserves the audited presentation parameters.
+A browser session is a client session for the current tenant only after
+`verifyClientSessionForTenant` confirms a client credential against the existing
+`GET /me?slug=<tenant>` membership contract. Manager, employee, platform, and
+unknown credentials are not client sessions and are not sent to `/me`. Login
+and registration publish `signedIn=true` with the tenant slug; explicit logout
+and a verified rejection of the active client token publish `signedIn=false`.
+The parent notification uses the referrer origin and never includes a token.
+Embedded public pages answer `schedulaa:client-session-request` with signed-in
+state and tenant slug only. Direct React navigation returns to
+`/login?site=<tenant>&client=1`; embedded navigation also preserves the audited
+presentation parameters.
 
 Only a request stamped with the active client token may invalidate that client
 session. A failed login (`noAuth`), an unrelated 401/403, a manager or employee
