@@ -1,3 +1,5 @@
+import { jwtDecode } from "jwt-decode";
+import { normalizeTenantSlug, persistTenantSlug } from "./clientTenant";
 import {
   buildClientOrderDashboardReturnPath,
   normalizeClientOrderReturnPath,
@@ -5,7 +7,19 @@ import {
 } from "./transactionalFrameBridge";
 
 export const CLIENT_SESSION_MESSAGE_TYPE = "schedulaa:client-session";
+export const CLIENT_SESSION_REQUEST_TYPE = "schedulaa:client-session-request";
 export const CLIENT_SESSION_STATE_EVENT = "schedulaa:client-session-state";
+const PRESENTATION_DETAIL_BLOCKLIST = new Set([
+  "token",
+  "access_token",
+  "authorization",
+  "clientToken",
+  "password",
+  "email",
+  "phone",
+  "profile",
+  "headers",
+]);
 const CLIENT_SESSION_REQUEST_TOKEN = "__schedulaaClientSessionToken";
 const AUTHENTICATED_REQUEST_CONTEXT = "__schedulaaAuthenticatedRequestContext";
 const TRUSTED_AUTHENTICATION_REJECTION_CODES = new Set([
@@ -53,16 +67,180 @@ const requestBearerToken = (config = {}) => {
 const requestCompanyId = (config = {}) =>
   readHeader(config.headers, "X-Company-Id") || readStorage("company_id");
 
+const parentPresentationOrigin = () => {
+  if (typeof window === "undefined" || !window.parent || window.parent === window) return "";
+  try {
+    return new URL(document.referrer).origin;
+  } catch {
+    return "";
+  }
+};
+
+const presentationDetail = (detail = {}) => {
+  const safe = {};
+  if (!detail || typeof detail !== "object") return safe;
+  Object.entries(detail).forEach(([key, value]) => {
+    if (PRESENTATION_DETAIL_BLOCKLIST.has(key)) return;
+    safe[key] = value;
+  });
+  return safe;
+};
+
 export const publishClientSessionState = (signedIn, detail = {}) => {
   if (typeof window === "undefined" || typeof signedIn !== "boolean") return false;
-  const payload = { type: CLIENT_SESSION_MESSAGE_TYPE, ...detail, signedIn };
+  const payload = {
+    ...presentationDetail(detail),
+    type: CLIENT_SESSION_MESSAGE_TYPE,
+    signedIn,
+  };
   window.dispatchEvent(
     new CustomEvent(CLIENT_SESSION_STATE_EVENT, { detail: payload })
   );
-  if (window.parent && window.parent !== window) {
-    window.parent.postMessage(payload, "*");
+  const targetOrigin = parentPresentationOrigin();
+  if (targetOrigin) {
+    try {
+      window.parent.postMessage(payload, targetOrigin);
+    } catch {}
   }
   return true;
+};
+
+const NON_CLIENT_ROLES = new Set([
+  "manager",
+  "employee",
+  "admin",
+  "platform",
+  "recruiter",
+  "owner",
+]);
+
+export const readClientCredential = (token = readStorage("token")) => {
+  const storedRole = readStorage("role").toLowerCase();
+  const credential = String(token || "").trim();
+  let claims = null;
+  if (credential) {
+    try {
+      claims = jwtDecode(credential);
+    } catch {
+      claims = null;
+    }
+  }
+  const claimRole = String(claims?.role || "").toLowerCase();
+  const identity = String(claims?.identity || claims?.sub || "");
+  const clientClaim = claimRole === "client" || identity.startsWith("client:");
+  const otherClaim = (Boolean(claimRole) && claimRole !== "client") || NON_CLIENT_ROLES.has(storedRole);
+  let kind = "missing";
+  if (!credential) kind = "missing";
+  else if (clientClaim) kind = "client";
+  else if (otherClaim || NON_CLIENT_ROLES.has(claimRole)) kind = "other";
+  else if (storedRole === "client") kind = "client";
+  else kind = "unknown";
+  return { kind, token: credential, claims, storedRole, clientClaim };
+};
+
+const clearClientCredentialStorage = () => {
+  try {
+    localStorage.removeItem("token");
+    localStorage.removeItem("clientToken");
+    localStorage.removeItem("role");
+    localStorage.removeItem("company_id");
+  } catch {}
+};
+
+export const persistVerifiedClientSession = (token, tenantSlug) => {
+  const credential = String(token || "").trim();
+  const slug = normalizeTenantSlug(tenantSlug);
+  if (!credential || typeof localStorage === "undefined") return "";
+  localStorage.setItem("token", credential);
+  localStorage.setItem("clientToken", credential);
+  localStorage.setItem("role", "client");
+  if (slug) persistTenantSlug(slug);
+  return slug;
+};
+
+const profileFromMe = (data = {}) => {
+  const name = data.full_name || `${data.first_name || ""} ${data.last_name || ""}`.trim();
+  return { ...data, name, email: data.email || "" };
+};
+
+export const verifyClientSessionForTenant = async (tenantSlug, { apiClient } = {}) => {
+  const slug = normalizeTenantSlug(tenantSlug);
+  const credential = readClientCredential();
+  if (!credential.token) {
+    return { signedIn: false, reason: "missing-token", tenantSlug: slug };
+  }
+  if (credential.kind !== "client") {
+    return {
+      signedIn: false,
+      reason: credential.kind === "unknown" ? "missing-role" : "non-client-token",
+      tenantSlug: slug,
+    };
+  }
+  if (!slug) {
+    return { signedIn: false, reason: "missing-tenant", tenantSlug: slug };
+  }
+  if (!apiClient?.get) {
+    return { signedIn: false, reason: "verification-unavailable", tenantSlug: slug };
+  }
+  try {
+    const { data } = await apiClient.get("/me", {
+      params: { slug },
+      headers: { Authorization: `Bearer ${credential.token}` },
+      noCompanyHeader: true,
+    });
+    if (!data?.email) {
+      return { signedIn: false, reason: "verification-failed", tenantSlug: slug };
+    }
+    return {
+      signedIn: true,
+      reason: "verified-client-session",
+      tenantSlug: slug,
+      profile: profileFromMe(data),
+    };
+  } catch (error) {
+    const status = error?.response?.status;
+    if ((status === 401 || status === 422) && credential.clientClaim) {
+      if (readStorage("token") === credential.token) clearClientCredentialStorage();
+      return { signedIn: false, reason: "expired", tenantSlug: slug, cleared: true };
+    }
+    if ((status === 401 || status === 422) && credential.storedRole === "client" && !credential.claims?.role) {
+      if (readStorage("token") === credential.token) clearClientCredentialStorage();
+      return { signedIn: false, reason: "expired", tenantSlug: slug, cleared: true };
+    }
+    return {
+      signedIn: false,
+      reason: status === 404 ? "wrong-tenant" : "verification-failed",
+      tenantSlug: slug,
+    };
+  }
+};
+
+let clientSessionBridgeInstalled = false;
+
+export const installClientSessionBridge = (apiClient) => {
+  if (clientSessionBridgeInstalled || typeof window === "undefined") return () => {};
+  clientSessionBridgeInstalled = true;
+  const onMessage = (event) => {
+    const expectedOrigin = parentPresentationOrigin();
+    if (!expectedOrigin || event.source !== window.parent || event.origin !== expectedOrigin) return;
+    const data = event.data;
+    if (!data || data.type !== CLIENT_SESSION_REQUEST_TYPE) return;
+    const tenantSlug = normalizeTenantSlug(data.tenantSlug);
+    if (!tenantSlug) return;
+    verifyClientSessionForTenant(tenantSlug, { apiClient }).then((result) => {
+      const reply = {
+        type: CLIENT_SESSION_MESSAGE_TYPE,
+        signedIn: result.signedIn === true,
+        tenantSlug,
+        reason: result.reason || "signed-out",
+      };
+      try {
+        event.source.postMessage(reply, event.origin);
+      } catch {}
+    });
+  };
+  window.addEventListener("message", onMessage);
+  return () => window.removeEventListener("message", onMessage);
 };
 
 export const buildClientLoginTarget = (tenantSlug, search = "", returnTo = "") => {
@@ -173,12 +351,13 @@ export const invalidateActiveClientSession = (error, detail = {}) => {
       return false;
     }
   }
+  const tenantSlug = normalizeTenantSlug(detail.tenantSlug) || readStorage("site");
   try {
     localStorage.removeItem("token");
     localStorage.removeItem("clientToken");
     localStorage.removeItem("role");
     localStorage.removeItem("company_id");
   } catch {}
-  publishClientSessionState(false, detail);
+  publishClientSessionState(false, { ...detail, tenantSlug });
   return true;
 };
