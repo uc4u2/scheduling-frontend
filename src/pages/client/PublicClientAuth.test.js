@@ -246,6 +246,7 @@ describe("PublicClientAuth", () => {
       assign,
     };
     api.post.mockResolvedValueOnce({ data: { access_token: "fresh-token" } });
+    api.get.mockResolvedValueOnce({ data: { email: "ada@example.com", full_name: "Ada Client" } });
 
     render(<PublicClientAuth slug="web-design" />);
     fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: "client@example.com" } });
@@ -268,6 +269,7 @@ describe("PublicClientAuth", () => {
       assign,
     };
     api.post.mockResolvedValueOnce({ data: { access_token: "fresh-order-token" } });
+    api.get.mockResolvedValueOnce({ data: { email: "ada@example.com", full_name: "Ada Client" } });
 
     render(<PublicClientAuth slug="web-design" />);
     fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: "client@example.com" } });
@@ -275,5 +277,55 @@ describe("PublicClientAuth", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => expect(assign).toHaveBeenCalledWith(continuation));
+  });
+
+  it("does not publish signed-in or open My Bookings when tenant verification fails", async () => {
+    const assign = jest.fn();
+    const originalLocation = window.location;
+    const sessionListener = jest.fn();
+    delete window.location;
+    window.location = {
+      ...originalLocation,
+      pathname: "/login",
+      search: "?site=web-design",
+      assign,
+    };
+    localStorage.setItem("token", "other-tenant-token");
+    localStorage.setItem("clientToken", "other-tenant-token");
+    localStorage.setItem("role", "client");
+    localStorage.setItem("site", "other-salon");
+    api.post.mockResolvedValueOnce({ data: { access_token: "new-client-token" } });
+    api.get.mockRejectedValue({ response: { status: 404, data: { error: "Client not found" } } });
+    window.addEventListener(CLIENT_SESSION_STATE_EVENT, sessionListener);
+
+    try {
+      render(<PublicClientAuth slug="web-design" />);
+      fireEvent.change(screen.getByLabelText(/^Email/), { target: { value: "ada@example.com" } });
+      fireEvent.change(screen.getByLabelText(/^Password/), { target: { value: "secret" } });
+      fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "We could not confirm this account for this business. Please sign in again.",
+      );
+      expect(screen.getByRole("alert")).not.toHaveTextContent("Client not found");
+      expect(assign).not.toHaveBeenCalled();
+      expect(sessionListener).toHaveBeenCalledWith(expect.objectContaining({
+        detail: expect.objectContaining({
+          signedIn: false,
+          tenantSlug: "web-design",
+          reason: "wrong-tenant",
+        }),
+      }));
+      expect(sessionListener).not.toHaveBeenCalledWith(expect.objectContaining({
+        detail: expect.objectContaining({ signedIn: true }),
+      }));
+      expect(localStorage.getItem("token")).toBe("other-tenant-token");
+      expect(localStorage.getItem("clientToken")).toBe("other-tenant-token");
+      expect(localStorage.getItem("role")).toBe("client");
+      expect(localStorage.getItem("site")).toBe("other-salon");
+    } finally {
+      window.removeEventListener(CLIENT_SESSION_STATE_EVENT, sessionListener);
+      window.location = originalLocation;
+    }
   });
 });
