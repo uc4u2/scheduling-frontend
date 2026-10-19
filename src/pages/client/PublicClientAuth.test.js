@@ -6,8 +6,13 @@ import { api } from "../../utils/api";
 import { CLIENT_SESSION_STATE_EVENT } from "../../utils/clientSession";
 
 jest.mock("../../utils/api", () => ({
-  api: { post: jest.fn() },
+  api: { post: jest.fn(), get: jest.fn() },
 }));
+
+const unsignedJwt = (payload) => {
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${encode({ alg: "none", typ: "JWT" })}.${encode(payload)}.sig`;
+};
 
 jest.mock("../../utils/tenant", () => ({
   getTenantHostMode: () => "platform",
@@ -64,9 +69,12 @@ describe("PublicClientAuth", () => {
     const assign = jest.fn();
     const originalLocation = window.location;
     const sessionListener = jest.fn();
-    localStorage.setItem("token", "existing-client-token");
+    localStorage.setItem("token", unsignedJwt({ role: "client", identity: "client:9" }));
     localStorage.setItem("role", "client");
     localStorage.setItem("site", "web-design");
+    api.get.mockResolvedValue({
+      data: { id: 9, email: "ada@example.com", full_name: "Ada Client" },
+    });
     window.addEventListener(CLIENT_SESSION_STATE_EVENT, sessionListener);
     delete window.location;
     window.location = {
@@ -84,6 +92,7 @@ describe("PublicClientAuth", () => {
         detail: expect.objectContaining({
           signedIn: true,
           reason: "existing-client-session",
+          tenantSlug: "web-design",
         }),
       }));
     } finally {
@@ -92,12 +101,14 @@ describe("PublicClientAuth", () => {
     }
   });
 
-  it("does not present a client session from another tenant as signed in", () => {
+  it("does not present a client session from another tenant as signed in", async () => {
     const assign = jest.fn();
     const originalLocation = window.location;
-    localStorage.setItem("token", "other-tenant-token");
+    const token = unsignedJwt({ role: "client", identity: "client:9" });
+    localStorage.setItem("token", token);
     localStorage.setItem("role", "client");
     localStorage.setItem("site", "other-tenant");
+    api.get.mockRejectedValue({ response: { status: 404, data: { error: "Client not found" } } });
     delete window.location;
     window.location = {
       ...originalLocation,
@@ -109,8 +120,58 @@ describe("PublicClientAuth", () => {
     try {
       render(<PublicClientAuth slug="web-design" />);
 
+      await waitFor(() => expect(api.get).toHaveBeenCalledWith("/me", expect.objectContaining({
+        params: { slug: "web-design" },
+        noCompanyHeader: true,
+      })));
       expect(assign).not.toHaveBeenCalled();
+      expect(localStorage.getItem("token")).toBe(token);
       expect(screen.getByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+    } finally {
+      window.location = originalLocation;
+    }
+  });
+
+  it("keeps manager, missing-role, expired, and logged-out sessions on the client login form", async () => {
+    const assign = jest.fn();
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = { ...originalLocation, pathname: "/login", search: "?site=web-design", assign };
+
+    const expectLoginForm = async () => {
+      expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+      expect(assign).not.toHaveBeenCalled();
+    };
+
+    try {
+      localStorage.setItem("token", unsignedJwt({ role: "manager", sub: "manager@example.com" }));
+      localStorage.setItem("role", "manager");
+      const manager = render(<PublicClientAuth slug="web-design" />);
+      await expectLoginForm();
+      expect(api.get).not.toHaveBeenCalled();
+      manager.unmount();
+
+      localStorage.clear();
+      localStorage.setItem("token", unsignedJwt({ sub: "person@example.com" }));
+      const missingRole = render(<PublicClientAuth slug="web-design" />);
+      await expectLoginForm();
+      expect(api.get).not.toHaveBeenCalled();
+      missingRole.unmount();
+
+      const expiredToken = unsignedJwt({ role: "client", identity: "client:3" });
+      localStorage.setItem("token", expiredToken);
+      localStorage.setItem("role", "client");
+      api.get.mockRejectedValue({ response: { status: 401, data: { code: "TOKEN_EXPIRED" } } });
+      const expired = render(<PublicClientAuth slug="web-design" />);
+      await waitFor(() => expect(localStorage.getItem("token")).toBeNull());
+      await expectLoginForm();
+      expired.unmount();
+
+      localStorage.clear();
+      api.get.mockClear();
+      render(<PublicClientAuth slug="web-design" />);
+      await expectLoginForm();
+      expect(api.get).not.toHaveBeenCalled();
     } finally {
       window.location = originalLocation;
     }
