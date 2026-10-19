@@ -147,6 +147,15 @@ const clearClientCredentialStorage = () => {
   } catch {}
 };
 
+export const CLIENT_MEMBERSHIP_CONFIRMATION_MESSAGE =
+  "We could not confirm this account for this business. Please sign in again.";
+
+const isNonClientJwt = (credential) => {
+  const claimRole = String(credential?.claims?.role || "").toLowerCase();
+  const identity = String(credential?.claims?.identity || "");
+  return Boolean(claimRole) && claimRole !== "client" && !identity.startsWith("client:");
+};
+
 export const persistVerifiedClientSession = (token, tenantSlug) => {
   const credential = String(token || "").trim();
   const slug = normalizeTenantSlug(tenantSlug);
@@ -163,9 +172,15 @@ const profileFromMe = (data = {}) => {
   return { ...data, name, email: data.email || "" };
 };
 
-export const verifyClientSessionForTenant = async (tenantSlug, { apiClient } = {}) => {
+export const verifyClientSessionForTenant = async (
+  tenantSlug,
+  { apiClient, token, issuedClientCredential = false } = {},
+) => {
   const slug = normalizeTenantSlug(tenantSlug);
-  const credential = readClientCredential();
+  const credential = readClientCredential(token);
+  if (issuedClientCredential && credential.token && !isNonClientJwt(credential)) {
+    credential.kind = "client";
+  }
   if (!credential.token) {
     return { signedIn: false, reason: "missing-token", tenantSlug: slug };
   }
@@ -187,6 +202,7 @@ export const verifyClientSessionForTenant = async (tenantSlug, { apiClient } = {
       params: { slug },
       headers: { Authorization: `Bearer ${credential.token}` },
       noCompanyHeader: true,
+      noAuth: true,
     });
     if (!data?.email) {
       return { signedIn: false, reason: "verification-failed", tenantSlug: slug };
@@ -213,6 +229,73 @@ export const verifyClientSessionForTenant = async (tenantSlug, { apiClient } = {
       tenantSlug: slug,
     };
   }
+};
+
+const restoreStoredSession = (prior) => {
+  if (typeof localStorage === "undefined") return;
+  const write = (key, value) => {
+    if (value) localStorage.setItem(key, value);
+    else localStorage.removeItem(key);
+  };
+  write("token", prior.token);
+  write("clientToken", prior.clientToken);
+  write("role", prior.role);
+  write("site", prior.site);
+  write("company_id", prior.companyId);
+};
+
+export const confirmIssuedClientSession = async (token, tenantSlug, { apiClient } = {}) => {
+  const slug = normalizeTenantSlug(tenantSlug);
+  const issuedToken = String(token || "").trim();
+  const prior = {
+    token: readStorage("token"),
+    clientToken: readStorage("clientToken"),
+    role: readStorage("role"),
+    site: readStorage("site"),
+    companyId: readStorage("company_id"),
+  };
+  const failed = (reason) => {
+    const storageToken = readStorage("token");
+    const newerSessionWon = Boolean(storageToken) && storageToken !== issuedToken && storageToken !== prior.token;
+    if (!newerSessionWon) {
+      publishClientSessionState(false, { reason, tenantSlug: slug });
+      if (storageToken === issuedToken && issuedToken !== prior.token) {
+        restoreStoredSession(prior);
+      }
+    }
+    return {
+      signedIn: false,
+      reason,
+      tenantSlug: slug,
+      message: CLIENT_MEMBERSHIP_CONFIRMATION_MESSAGE,
+    };
+  };
+
+  if (!issuedToken || !slug || isNonClientJwt(readClientCredential(issuedToken))) {
+    return failed(!issuedToken ? "missing-token" : !slug ? "missing-tenant" : "non-client-token");
+  }
+
+  const result = await verifyClientSessionForTenant(slug, {
+    apiClient,
+    token: issuedToken,
+    issuedClientCredential: true,
+  });
+  const storageToken = readStorage("token");
+  const newerSessionWon = Boolean(storageToken) && storageToken !== issuedToken && storageToken !== prior.token;
+  if (newerSessionWon) {
+    return {
+      signedIn: false,
+      reason: "superseded",
+      tenantSlug: slug,
+      message: CLIENT_MEMBERSHIP_CONFIRMATION_MESSAGE,
+    };
+  }
+  if (result.signedIn === true) {
+    persistVerifiedClientSession(issuedToken, slug);
+    publishClientSessionState(true, { reason: "authenticated", tenantSlug: slug });
+    return { ...result, signedIn: true, tenantSlug: slug };
+  }
+  return failed(result.reason || "verification-failed");
 };
 
 let clientSessionBridgeInstalled = false;
