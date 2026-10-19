@@ -1,1 +1,2 @@
-FILE_WILL_BE_SENT_FROM_DISK
+// src/pages/client/Checkout.js
+import React, { useEffect, useMemo, useRef, useState } from "react";
