@@ -2,6 +2,8 @@ import {
   buildClientLoginTarget,
   CLIENT_SESSION_REQUEST_TYPE,
   CLIENT_SESSION_STATE_EVENT,
+  CLIENT_MEMBERSHIP_CONFIRMATION_MESSAGE,
+  confirmIssuedClientSession,
   installClientSessionBridge,
   invalidateActiveClientSession,
   markActiveClientSessionRequest,
@@ -241,6 +243,7 @@ describe("client session lifecycle", () => {
       params: { slug: "beauty-salon" },
       headers: { Authorization: expect.stringMatching(/^Bearer /) },
       noCompanyHeader: true,
+      noAuth: true,
     });
   });
 
@@ -332,5 +335,94 @@ describe("client session lifecycle", () => {
 
     if (previousParent) Object.defineProperty(window, "parent", previousParent);
     if (previousReferrer) Object.defineProperty(document, "referrer", previousReferrer);
+  });
+
+  it("publishes signed-in only after the issued token is verified for the tenant", async () => {
+    let resolveMembership;
+    const apiClient = {
+      get: jest.fn().mockReturnValue(new Promise((resolve) => {
+        resolveMembership = resolve;
+      })),
+    };
+    const received = [];
+    const listener = (event) => received.push(event.detail);
+    window.addEventListener(CLIENT_SESSION_STATE_EVENT, listener);
+    const issued = unsignedJwt({ role: "client", identity: "client:9" });
+    const pending = confirmIssuedClientSession(issued, "beauty-salon", { apiClient });
+
+    await Promise.resolve();
+    expect(received).toEqual([]);
+    expect(localStorage.getItem("token")).toBeNull();
+
+    resolveMembership({ data: { email: "ada@example.com", full_name: "Ada Client" } });
+    await expect(pending).resolves.toEqual(expect.objectContaining({ signedIn: true, tenantSlug: "beauty-salon" }));
+    expect(received).toEqual([
+      expect.objectContaining({ signedIn: true, tenantSlug: "beauty-salon", reason: "authenticated" }),
+    ]);
+    expect(localStorage.getItem("token")).toBe(issued);
+    expect(JSON.stringify(received)).not.toContain(issued);
+    window.removeEventListener(CLIENT_SESSION_STATE_EVENT, listener);
+  });
+
+  it("publishes tenant-scoped signed-out without erasing another tenant session", async () => {
+    localStorage.setItem("token", "other-tenant-token");
+    localStorage.setItem("clientToken", "other-tenant-token");
+    localStorage.setItem("role", "client");
+    localStorage.setItem("site", "other-salon");
+    const apiClient = {
+      get: jest.fn().mockRejectedValue({ response: { status: 404, data: { error: "Client not found" } } }),
+    };
+    const received = [];
+    const listener = (event) => received.push(event.detail);
+    window.addEventListener(CLIENT_SESSION_STATE_EVENT, listener);
+
+    await expect(confirmIssuedClientSession("new-client-token", "beauty-salon", { apiClient })).resolves.toEqual(
+      expect.objectContaining({
+        signedIn: false,
+        tenantSlug: "beauty-salon",
+        message: CLIENT_MEMBERSHIP_CONFIRMATION_MESSAGE,
+      }),
+    );
+    expect(received).toEqual([
+      expect.objectContaining({ signedIn: false, tenantSlug: "beauty-salon", reason: "wrong-tenant" }),
+    ]);
+    expect(localStorage.getItem("token")).toBe("other-tenant-token");
+    expect(localStorage.getItem("clientToken")).toBe("other-tenant-token");
+    expect(localStorage.getItem("role")).toBe("client");
+    expect(localStorage.getItem("site")).toBe("other-salon");
+    window.removeEventListener(CLIENT_SESSION_STATE_EVENT, listener);
+  });
+
+  it("does not replace a newer login that wins the verification race", async () => {
+    let rejectMembership;
+    const apiClient = {
+      get: jest.fn().mockReturnValue(new Promise((_, reject) => {
+        rejectMembership = reject;
+      })),
+    };
+    const pending = confirmIssuedClientSession("issued-token", "beauty-salon", { apiClient });
+    await Promise.resolve();
+    localStorage.setItem("token", "newer-token");
+    localStorage.setItem("role", "client");
+    localStorage.setItem("site", "newer-salon");
+    rejectMembership({ response: { status: 404, data: { error: "Client not found" } } });
+
+    await expect(pending).resolves.toEqual(expect.objectContaining({ signedIn: false, reason: "superseded" }));
+    expect(localStorage.getItem("token")).toBe("newer-token");
+    expect(localStorage.getItem("site")).toBe("newer-salon");
+  });
+
+  it("does not turn a manager token into a client session", async () => {
+    const managerToken = unsignedJwt({ role: "manager", sub: "manager@example.com" });
+    localStorage.setItem("token", managerToken);
+    localStorage.setItem("role", "manager");
+    const apiClient = { get: jest.fn() };
+
+    await expect(confirmIssuedClientSession(managerToken, "beauty-salon", { apiClient })).resolves.toEqual(
+      expect.objectContaining({ signedIn: false, reason: "non-client-token" }),
+    );
+    expect(apiClient.get).not.toHaveBeenCalled();
+    expect(localStorage.getItem("token")).toBe(managerToken);
+    expect(localStorage.getItem("role")).toBe("manager");
   });
 });
