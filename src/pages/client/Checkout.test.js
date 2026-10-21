@@ -1257,7 +1257,7 @@ describe("CheckoutFormCore", () => {
     expect(window.localStorage.getItem("clientToken")).toBeNull();
   });
 
-  test("keeps only a one-time handoff code after a verified custom-domain session", async () => {
+  test("never stores a handoff code in the custom-domain session", async () => {
     const code = "handoffcodehandoffcodehandoffcode1234";
     window.localStorage.setItem("role", "client");
     window.localStorage.setItem("token", unsignedJwt({ role: "client", identity: "client:9" }));
@@ -1269,13 +1269,7 @@ describe("CheckoutFormCore", () => {
       }
       return Promise.resolve({ data: [] });
     });
-    mockApiPost.mockImplementation((url, body) => {
-      if (url === "/client-session/handoff") {
-        expect(body).toEqual({ slug: "beauty-salon" });
-        return Promise.resolve({ data: { handoff_code: code, expires_in: 60, tenant_slug: "beauty-salon" } });
-      }
-      return Promise.resolve({ data: {} });
-    });
+    mockApiPost.mockResolvedValue({ data: { handoff_code: code } });
 
     render(
       <CheckoutFormCore
@@ -1289,9 +1283,8 @@ describe("CheckoutFormCore", () => {
     );
 
     expect(await screen.findByDisplayValue("Ada Client")).toBeInTheDocument();
-    await waitFor(() => {
-      expect(window.sessionStorage.getItem("schedulaa:client-handoff:beauty-salon")).toBe(code);
-    });
+    await waitFor(() => expect(mockApiGet).toHaveBeenCalledWith("/me", expect.anything()));
+    expect(window.sessionStorage.getItem("schedulaa:client-handoff:beauty-salon")).toBeNull();
     expect(window.localStorage.getItem("schedulaa:client-session:beauty-salon")).not.toBe(code);
     expect(JSON.stringify(window.localStorage)).not.toContain(code);
     expect(JSON.stringify(mockApiPost.mock.calls)).not.toContain("ada@example.com");

@@ -10,7 +10,7 @@ import { CartTypes, loadCart, saveCart, setCartTenantContext } from "../../utils
 import { getTenantHostMode } from "../../utils/tenant";
 import {
   clientSessionLoggedOut,
-  issueClientSessionHandoff,
+  bootstrapClientSessionAtAppOrigin,
   publishClientSessionState,
   verifyClientSessionForTenant,
 } from "../../utils/clientSession";
@@ -404,7 +404,7 @@ export function CheckoutFormCore({
           reason: "verified-client-session",
           tenantSlug: slugLocal,
         });
-        issueClientSessionHandoff(slugLocal, { apiClient });
+        bootstrapClientSessionAtAppOrigin(slugLocal, { apiClient });
         return;
       }
       setClient(null);

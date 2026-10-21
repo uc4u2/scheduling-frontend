@@ -10,9 +10,11 @@ import {
 export const CLIENT_SESSION_MESSAGE_TYPE = "schedulaa:client-session";
 export const CLIENT_SESSION_REQUEST_TYPE = "schedulaa:client-session-request";
 export const CLIENT_SESSION_HANDOFF_TYPE = "schedulaa:client-session-handoff";
+export const CLIENT_SESSION_HANDOFF_REQUEST_TYPE = "schedulaa:client-session-handoff-request";
 export const CLIENT_SESSION_LOGOUT_TYPE = "schedulaa:client-session-logout";
 export const CLIENT_SESSION_STATE_EVENT = "schedulaa:client-session-state";
 const HANDOFF_CODE_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
+const PKCE_PATTERN = /^[A-Za-z0-9_-]{43,128}$/;
 const PRESENTATION_DETAIL_BLOCKLIST = new Set([
   "token",
   "access_token",
@@ -217,6 +219,16 @@ export const clearClientSessionLogout = (tenantSlug) => {
 
 export const logoutClientSession = (tenantSlug, detail = {}) => {
   const slug = normalizeTenantSlug(tenantSlug);
+  const credential = readClientCredential();
+  const apiClient = clientSessionBridgeApi;
+  if (credential.kind === "client" && credential.token && apiClient?.post) {
+    // Best effort: local logout must still complete if a device is offline.
+    apiClient.post("/client-session/logout", {}, {
+      headers: { Authorization: `Bearer ${credential.token}` },
+      noAuth: true,
+      noCompanyHeader: true,
+    }).catch(() => {});
+  }
   clearClientCredentialStorage();
   try {
     sessionStorage.removeItem(handoffStorageKey(slug));
@@ -228,6 +240,58 @@ export const logoutClientSession = (tenantSlug, detail = {}) => {
     reason: detail.reason || "logout",
     tenantSlug: slug,
   });
+  return true;
+};
+
+const appOrigin = () => {
+  const configured = String(process.env.REACT_APP_APP_ORIGIN || "https://app.schedulaa.com").trim();
+  try { return new URL(configured).origin; } catch { return ""; }
+};
+
+/**
+ * A custom tenant origin cannot write app.schedulaa.com's storage.  Instead it
+ * hosts a short-lived, hidden app iframe.  The iframe owns the PKCE verifier;
+ * this page only creates a code after receiving its challenge.
+ */
+export const bootstrapClientSessionAtAppOrigin = (tenantSlug, { apiClient } = {}) => {
+  const slug = normalizeTenantSlug(tenantSlug);
+  const targetOrigin = appOrigin();
+  const credential = readClientCredential();
+  if (!slug || getTenantHostMode() !== "custom" || !targetOrigin || !credential.token || credential.kind !== "client" || typeof document === "undefined") return false;
+  const iframe = document.createElement("iframe");
+  iframe.hidden = true;
+  iframe.tabIndex = -1;
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.src = `${targetOrigin}/login?site=${encodeURIComponent(slug)}&client=1&embed=1&bootstrap=1`;
+  let complete = false;
+  const finish = () => {
+    if (complete) return;
+    complete = true;
+    window.removeEventListener("message", onMessage);
+    window.clearTimeout(timeout);
+    iframe.remove();
+  };
+  const onMessage = async (event) => {
+    if (event.origin !== targetOrigin || event.source !== iframe.contentWindow || !event.data || typeof event.data !== "object") return;
+    if (event.data.type === CLIENT_SESSION_MESSAGE_TYPE && event.data.tenantSlug === slug && event.data.signedIn === true) {
+      finish();
+      return;
+    }
+    if (event.data.type !== CLIENT_SESSION_HANDOFF_REQUEST_TYPE || event.data.tenantSlug !== slug) return;
+    const challenge = String(event.data.codeChallenge || "").trim();
+    if (!PKCE_PATTERN.test(challenge) || !apiClient?.post) return finish();
+    try {
+      const response = await apiClient.post("/client-session/handoff", { slug, code_challenge: challenge }, {
+        headers: { Authorization: `Bearer ${credential.token}` }, noAuth: true, noCompanyHeader: true,
+      });
+      const code = String(response?.data?.handoff_code || "").trim();
+      if (!HANDOFF_CODE_PATTERN.test(code)) return finish();
+      iframe.contentWindow?.postMessage({ type: CLIENT_SESSION_HANDOFF_TYPE, tenantSlug: slug, code }, targetOrigin);
+    } catch { finish(); }
+  };
+  const timeout = window.setTimeout(finish, 70_000);
+  window.addEventListener("message", onMessage);
+  document.body.appendChild(iframe);
   return true;
 };
 
@@ -426,6 +490,46 @@ export const confirmIssuedClientSession = async (token, tenantSlug, { apiClient 
 let clientSessionBridgeInstalled = false;
 let clientSessionBridgeApi = null;
 
+const base64Url = (bytes) => {
+  let binary = "";
+  bytes.forEach((value) => { binary += String.fromCharCode(value); });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+
+const createPkcePair = async () => {
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  const verifier = base64Url(bytes);
+  const digest = await window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  return { verifier, challenge: base64Url(new Uint8Array(digest)) };
+};
+
+const bootstrapRequest = async (apiClient) => {
+  const query = new URLSearchParams(window.location.search);
+  if (query.get("bootstrap") !== "1") return;
+  const tenantSlug = normalizeTenantSlug(query.get("site"));
+  const origin = parentPresentationOrigin();
+  if (!tenantSlug || !origin || !window.crypto?.subtle) return;
+  try {
+    const { verifier, challenge } = await createPkcePair();
+    const handler = (event) => {
+      const data = trustedParentData(event);
+      if (!data || data.type !== CLIENT_SESSION_HANDOFF_TYPE || data.tenantSlug !== tenantSlug) return;
+      const code = String(data.code || "").trim();
+      window.removeEventListener("message", handler);
+      if (!HANDOFF_CODE_PATTERN.test(code) || !apiClient?.post) return;
+      apiClient.post("/client-session/handoff/redeem", { code, slug: tenantSlug, code_verifier: verifier }, { noAuth: true, noCompanyHeader: true })
+        .then((response) => confirmIssuedClientSession(String(response?.data?.access_token || ""), tenantSlug, { apiClient }))
+        .catch(() => publishClientSessionState(false, { reason: "handoff-rejected", tenantSlug }));
+    };
+    window.addEventListener("message", handler);
+    window.parent.postMessage({ type: CLIENT_SESSION_HANDOFF_REQUEST_TYPE, tenantSlug, codeChallenge: challenge }, origin);
+    window.setTimeout(() => window.removeEventListener("message", handler), 65_000);
+  } catch {
+    publishClientSessionState(false, { reason: "handoff-rejected", tenantSlug });
+  }
+};
+
 const trustedParentData = (event) => {
   const expectedOrigin = parentPresentationOrigin();
   if (!expectedOrigin || event.source !== window.parent || event.origin !== expectedOrigin) return null;
@@ -438,6 +542,7 @@ export const installClientSessionBridge = (apiClient) => {
   clientSessionBridgeApi = apiClient || null;
   if (clientSessionBridgeInstalled || typeof window === "undefined") return () => {};
   clientSessionBridgeInstalled = true;
+  void bootstrapRequest(apiClient);
   const onMessage = (event) => {
     const data = trustedParentData(event);
     if (!data) return;
