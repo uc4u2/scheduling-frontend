@@ -103,6 +103,17 @@ export const publishClientSessionState = (signedIn, detail = {}) => {
     type: CLIENT_SESSION_MESSAGE_TYPE,
     signedIn,
   };
+  // A top-level legacy checkout has no Next shell listening to its event.
+  // Persist the same presentation hint the Next navbar reads after navigation.
+  // This hint must never authorize requests or trigger account redirects.
+  const slug = normalizeTenantSlug(payload.tenantSlug);
+  if (slug) {
+    try {
+      const key = `schedulaa:client-session:${slug}`;
+      if (signedIn) localStorage.setItem(key, "1");
+      else localStorage.removeItem(key);
+    } catch {}
+  }
   window.dispatchEvent(
     new CustomEvent(CLIENT_SESSION_STATE_EVENT, { detail: payload })
   );
@@ -276,7 +287,7 @@ export const bootstrapClientSessionAtAppOrigin = (tenantSlug, { apiClient } = {}
   };
   const onMessage = async (event) => {
     if (event.origin !== targetOrigin || event.source !== iframe.contentWindow || !event.data || typeof event.data !== "object") return;
-    if (event.data.type === CLIENT_SESSION_MESSAGE_TYPE && event.data.tenantSlug === slug && event.data.signedIn === true) {
+    if (event.data.type === CLIENT_SESSION_MESSAGE_TYPE && event.data.tenantSlug === slug && event.data.signedIn === true && event.data.reason === "authenticated") {
       finish();
       return;
     }
@@ -292,6 +303,7 @@ export const bootstrapClientSessionAtAppOrigin = (tenantSlug, { apiClient } = {}
         headers: { Authorization: `Bearer ${credential.token}` }, noAuth: true, noCompanyHeader: true,
       });
       const code = String(response?.data?.handoff_code || "").trim();
+      if (complete) return;
       if (!HANDOFF_CODE_PATTERN.test(code)) return finish();
       const deliver = () => iframe.contentWindow?.postMessage(
         { type: CLIENT_SESSION_HANDOFF_TYPE, tenantSlug: slug, code }, targetOrigin,
@@ -307,42 +319,6 @@ export const bootstrapClientSessionAtAppOrigin = (tenantSlug, { apiClient } = {}
   window.addEventListener("message", onMessage);
   document.body.appendChild(iframe);
   return true;
-};
-
-export const issueClientSessionHandoff = async (tenantSlug, { apiClient } = {}) => {
-  const slug = normalizeTenantSlug(tenantSlug);
-  if (!slug || getTenantHostMode() !== "custom" || clientSessionLoggedOut(slug) || !apiClient?.post) {
-    return "";
-  }
-  const credential = readClientCredential();
-  if (credential.kind !== "client" || !credential.token) return "";
-  try {
-    const response = await apiClient.post(
-      "/client-session/handoff",
-      { slug },
-      {
-        headers: { Authorization: `Bearer ${credential.token}` },
-        noAuth: true,
-        noCompanyHeader: true,
-      },
-    );
-    const code = String(response?.data?.handoff_code || "").trim();
-    if (!HANDOFF_CODE_PATTERN.test(code)) return "";
-    sessionStorage.setItem(handoffStorageKey(slug), code);
-    return code;
-  } catch {
-    return "";
-  }
-};
-
-export const consumeClientSessionHandoff = (tenantSlug) => {
-  const slug = normalizeTenantSlug(tenantSlug);
-  let code = "";
-  try {
-    code = sessionStorage.getItem(handoffStorageKey(slug)) || "";
-    sessionStorage.removeItem(handoffStorageKey(slug));
-  } catch {}
-  return HANDOFF_CODE_PATTERN.test(code) ? code : "";
 };
 
 installClientLogoutHook();
@@ -530,8 +506,8 @@ const bootstrapRequest = async (apiClient) => {
       const data = trustedParentData(event);
       if (!data || data.type !== CLIENT_SESSION_HANDOFF_TYPE || data.tenantSlug !== tenantSlug) return;
       const code = String(data.code || "").trim();
-      window.removeEventListener("message", handler);
       if (!HANDOFF_CODE_PATTERN.test(code) || !apiClient?.post) return;
+      window.removeEventListener("message", handler);
       event.source.postMessage({ type: CLIENT_SESSION_HANDOFF_ACK_TYPE, tenantSlug }, event.origin);
       apiClient.post("/client-session/handoff/redeem", { code, slug: tenantSlug, code_verifier: verifier }, { noAuth: true, noCompanyHeader: true })
         .then((response) => confirmIssuedClientSession(String(response?.data?.access_token || ""), tenantSlug, { apiClient }))
@@ -568,25 +544,9 @@ export const installClientSessionBridge = (apiClient) => {
       logoutClientSession(tenantSlug, { reason: "parent-logout" });
       return;
     }
-    if (data.type === CLIENT_SESSION_HANDOFF_TYPE) {
-      const code = String(data.code || "").trim();
-      if (!HANDOFF_CODE_PATTERN.test(code) || !apiClient?.post) return;
-      apiClient.post(
-        "/client-session/handoff/redeem",
-        { code, slug: tenantSlug },
-        { noAuth: true, noCompanyHeader: true },
-      ).then((response) => {
-        const accessToken = String(response?.data?.access_token || "").trim();
-        if (!accessToken) {
-          publishClientSessionState(false, { reason: "handoff-rejected", tenantSlug });
-          return null;
-        }
-        return confirmIssuedClientSession(accessToken, tenantSlug, { apiClient });
-      }).catch(() => {
-        publishClientSessionState(false, { reason: "handoff-rejected", tenantSlug });
-      });
-      return;
-    }
+    // Only bootstrapRequest owns a PKCE verifier. Never redeem codes from
+    // generic presentation messages, including messages on normal login pages.
+    if (data.type === CLIENT_SESSION_HANDOFF_TYPE) return;
     if (data.type !== CLIENT_SESSION_REQUEST_TYPE) return;
     verifyClientSessionForTenant(tenantSlug, { apiClient }).then((result) => {
       const reply = {

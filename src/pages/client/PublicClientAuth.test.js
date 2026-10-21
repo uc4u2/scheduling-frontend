@@ -285,7 +285,7 @@ describe("PublicClientAuth", () => {
     await waitFor(() => expect(assign).toHaveBeenCalledWith(continuation));
   });
 
-  it("opens My Bookings after the trusted parent hands off a code and membership succeeds", async () => {
+  it("ignores unsolicited handoff codes on the interactive login page", async () => {
     const assign = jest.fn();
     const originalLocation = window.location;
     const previousParent = Object.getOwnPropertyDescriptor(window, "parent");
@@ -305,13 +305,7 @@ describe("PublicClientAuth", () => {
       search: "?site=beauty-salon&embed=1",
       assign,
     };
-    api.post.mockImplementation((url, body) => {
-      if (url === "/client-session/handoff/redeem") {
-        expect(body).toEqual({ code, slug: "beauty-salon" });
-        return Promise.resolve({ data: { access_token: access, tenant_slug: "beauty-salon" } });
-      }
-      return Promise.resolve({ data: {} });
-    });
+    api.post.mockResolvedValue({ data: { access_token: access } });
     api.get.mockResolvedValue({
       data: { id: 9, email: "ada@example.com", full_name: "Ada Client" },
     });
@@ -331,8 +325,10 @@ describe("PublicClientAuth", () => {
         data: { type: CLIENT_SESSION_HANDOFF_TYPE, tenantSlug: "beauty-salon", code },
       }));
 
-      await waitFor(() => expect(assign).toHaveBeenCalledWith("/dashboard?site=beauty-salon&embed=1&dialog=1"));
-      expect(localStorage.getItem("token")).toBe(access);
+      await Promise.resolve();
+      expect(api.post).not.toHaveBeenCalled();
+      expect(assign).not.toHaveBeenCalled();
+      expect(localStorage.getItem("token")).toBeNull();
       const posted = JSON.stringify(parent.postMessage.mock.calls);
       expect(posted).not.toContain(access);
       expect(posted).not.toContain(code);
