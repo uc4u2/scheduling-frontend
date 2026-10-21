@@ -3,7 +3,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import PublicClientAuth, { resolveClientAuthCompletionPath } from "./PublicClientAuth";
 import { api } from "../../utils/api";
-import { CLIENT_SESSION_STATE_EVENT } from "../../utils/clientSession";
+import {
+  CLIENT_SESSION_HANDOFF_TYPE,
+  CLIENT_SESSION_STATE_EVENT,
+  installClientSessionBridge,
+} from "../../utils/clientSession";
 
 jest.mock("../../utils/api", () => ({
   api: { post: jest.fn(), get: jest.fn() },
@@ -33,6 +37,8 @@ describe("PublicClientAuth", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
+    installClientSessionBridge(api);
     window.history.replaceState({}, "", "/login");
   });
 
@@ -277,6 +283,66 @@ describe("PublicClientAuth", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
     await waitFor(() => expect(assign).toHaveBeenCalledWith(continuation));
+  });
+
+  it("opens My Bookings after the trusted parent hands off a code and membership succeeds", async () => {
+    const assign = jest.fn();
+    const originalLocation = window.location;
+    const previousParent = Object.getOwnPropertyDescriptor(window, "parent");
+    const previousReferrer = Object.getOwnPropertyDescriptor(document, "referrer");
+    const parent = { postMessage: jest.fn() };
+    const code = "handoffcodehandoffcodehandoffcode1234";
+    const access = unsignedJwt({ role: "client", identity: "client:9" });
+    Object.defineProperty(window, "parent", { configurable: true, value: parent });
+    Object.defineProperty(document, "referrer", {
+      configurable: true,
+      value: "https://www.lumiereprivatesalon.com/login",
+    });
+    delete window.location;
+    window.location = {
+      ...originalLocation,
+      pathname: "/login",
+      search: "?site=beauty-salon&embed=1",
+      assign,
+    };
+    api.post.mockImplementation((url, body) => {
+      if (url === "/client-session/handoff/redeem") {
+        expect(body).toEqual({ code, slug: "beauty-salon" });
+        return Promise.resolve({ data: { access_token: access, tenant_slug: "beauty-salon" } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+    api.get.mockResolvedValue({
+      data: { id: 9, email: "ada@example.com", full_name: "Ada Client" },
+    });
+
+    try {
+      render(<PublicClientAuth slug="beauty-salon" />);
+      window.dispatchEvent(new MessageEvent("message", {
+        source: parent,
+        origin: "https://evil.example",
+        data: { type: CLIENT_SESSION_HANDOFF_TYPE, tenantSlug: "beauty-salon", code, access_token: access },
+      }));
+      expect(api.post).not.toHaveBeenCalled();
+
+      window.dispatchEvent(new MessageEvent("message", {
+        source: parent,
+        origin: "https://www.lumiereprivatesalon.com",
+        data: { type: CLIENT_SESSION_HANDOFF_TYPE, tenantSlug: "beauty-salon", code },
+      }));
+
+      await waitFor(() => expect(assign).toHaveBeenCalledWith("/dashboard?site=beauty-salon&embed=1&dialog=1"));
+      expect(localStorage.getItem("token")).toBe(access);
+      const posted = JSON.stringify(parent.postMessage.mock.calls);
+      expect(posted).not.toContain(access);
+      expect(posted).not.toContain(code);
+      expect(posted).not.toContain("ada@example.com");
+      expect(window.location.search).not.toContain(access);
+    } finally {
+      window.location = originalLocation;
+      if (previousParent) Object.defineProperty(window, "parent", previousParent);
+      if (previousReferrer) Object.defineProperty(document, "referrer", previousReferrer);
+    }
   });
 
   it("does not publish signed-in or open My Bookings when tenant verification fails", async () => {
