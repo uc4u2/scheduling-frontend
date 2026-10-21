@@ -1232,6 +1232,71 @@ describe("CheckoutFormCore", () => {
     expect(window.localStorage.getItem("role")).toBe("manager");
   });
 
+  test("does not call /me or prefill after a shared client logout", async () => {
+    const token = unsignedJwt({ role: "client", identity: "client:9" });
+    window.localStorage.setItem("schedulaa:client-logout:beauty-salon", "1710000000000");
+    window.localStorage.setItem("role", "client");
+    window.localStorage.setItem("token", token);
+    window.localStorage.setItem("clientToken", token);
+
+    render(
+      <CheckoutFormCore
+        companySlug="beauty-salon"
+        paymentsEnabled={false}
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "off" }}
+      />
+    );
+
+    expect(await screen.findByLabelText(/your name/i)).toHaveValue("");
+    expect(screen.getByLabelText(/your email/i)).toHaveValue("");
+    expect(mockApiGet.mock.calls.some((call) => String(call[0]).includes("/me"))).toBe(false);
+    expect(window.localStorage.getItem("token")).toBeNull();
+    expect(window.localStorage.getItem("clientToken")).toBeNull();
+  });
+
+  test("keeps only a one-time handoff code after a verified custom-domain session", async () => {
+    const code = "handoffcodehandoffcodehandoffcode1234";
+    window.localStorage.setItem("role", "client");
+    window.localStorage.setItem("token", unsignedJwt({ role: "client", identity: "client:9" }));
+    mockApiGet.mockImplementation((url) => {
+      if (url === "/me") {
+        return Promise.resolve({
+          data: { id: 9, email: "ada@example.com", full_name: "Ada Client" },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    mockApiPost.mockImplementation((url, body) => {
+      if (url === "/client-session/handoff") {
+        expect(body).toEqual({ slug: "beauty-salon" });
+        return Promise.resolve({ data: { handoff_code: code, expires_in: 60, tenant_slug: "beauty-salon" } });
+      }
+      return Promise.resolve({ data: {} });
+    });
+
+    render(
+      <CheckoutFormCore
+        companySlug="beauty-salon"
+        paymentsEnabled={false}
+        tipEnabled={false}
+        cardOnFileEnabled={false}
+        displayCurrency="CAD"
+        policy={{ mode: "off" }}
+      />
+    );
+
+    expect(await screen.findByDisplayValue("Ada Client")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem("schedulaa:client-handoff:beauty-salon")).toBe(code);
+    });
+    expect(window.localStorage.getItem("schedulaa:client-session:beauty-salon")).not.toBe(code);
+    expect(JSON.stringify(window.localStorage)).not.toContain(code);
+    expect(JSON.stringify(mockApiPost.mock.calls)).not.toContain("ada@example.com");
+  });
+
   test("prefills checkout only for a verified client of the current tenant", async () => {
     window.localStorage.setItem("role", "client");
     window.localStorage.setItem("token", unsignedJwt({ role: "client", identity: "client:9" }));
