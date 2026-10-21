@@ -11,6 +11,7 @@ export const CLIENT_SESSION_MESSAGE_TYPE = "schedulaa:client-session";
 export const CLIENT_SESSION_REQUEST_TYPE = "schedulaa:client-session-request";
 export const CLIENT_SESSION_HANDOFF_TYPE = "schedulaa:client-session-handoff";
 export const CLIENT_SESSION_HANDOFF_REQUEST_TYPE = "schedulaa:client-session-handoff-request";
+export const CLIENT_SESSION_HANDOFF_ACK_TYPE = "schedulaa:client-session-handoff-ack";
 export const CLIENT_SESSION_LOGOUT_TYPE = "schedulaa:client-session-logout";
 export const CLIENT_SESSION_STATE_EVENT = "schedulaa:client-session-state";
 const HANDOFF_CODE_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
@@ -264,10 +265,12 @@ export const bootstrapClientSessionAtAppOrigin = (tenantSlug, { apiClient } = {}
   iframe.setAttribute("aria-hidden", "true");
   iframe.src = `${targetOrigin}/login?site=${encodeURIComponent(slug)}&client=1&embed=1&bootstrap=1`;
   let complete = false;
+  let deliveryTimer = null;
   const finish = () => {
     if (complete) return;
     complete = true;
     window.removeEventListener("message", onMessage);
+    if (deliveryTimer) window.clearInterval(deliveryTimer);
     window.clearTimeout(timeout);
     iframe.remove();
   };
@@ -275,6 +278,10 @@ export const bootstrapClientSessionAtAppOrigin = (tenantSlug, { apiClient } = {}
     if (event.origin !== targetOrigin || event.source !== iframe.contentWindow || !event.data || typeof event.data !== "object") return;
     if (event.data.type === CLIENT_SESSION_MESSAGE_TYPE && event.data.tenantSlug === slug && event.data.signedIn === true) {
       finish();
+      return;
+    }
+    if (event.data.type === CLIENT_SESSION_HANDOFF_ACK_TYPE && event.data.tenantSlug === slug) {
+      if (deliveryTimer) window.clearInterval(deliveryTimer);
       return;
     }
     if (event.data.type !== CLIENT_SESSION_HANDOFF_REQUEST_TYPE || event.data.tenantSlug !== slug) return;
@@ -286,7 +293,14 @@ export const bootstrapClientSessionAtAppOrigin = (tenantSlug, { apiClient } = {}
       });
       const code = String(response?.data?.handoff_code || "").trim();
       if (!HANDOFF_CODE_PATTERN.test(code)) return finish();
-      iframe.contentWindow?.postMessage({ type: CLIENT_SESSION_HANDOFF_TYPE, tenantSlug: slug, code }, targetOrigin);
+      const deliver = () => iframe.contentWindow?.postMessage(
+        { type: CLIENT_SESSION_HANDOFF_TYPE, tenantSlug: slug, code }, targetOrigin,
+      );
+      // A static app deploy can replace the iframe document just after it
+      // requests the challenge. Retry delivery until that document confirms it
+      // has received the one-time code; the code remains verifier-bound.
+      deliver();
+      deliveryTimer = window.setInterval(deliver, 300);
     } catch { finish(); }
   };
   const timeout = window.setTimeout(finish, 70_000);
@@ -518,6 +532,7 @@ const bootstrapRequest = async (apiClient) => {
       const code = String(data.code || "").trim();
       window.removeEventListener("message", handler);
       if (!HANDOFF_CODE_PATTERN.test(code) || !apiClient?.post) return;
+      event.source.postMessage({ type: CLIENT_SESSION_HANDOFF_ACK_TYPE, tenantSlug }, event.origin);
       apiClient.post("/client-session/handoff/redeem", { code, slug: tenantSlug, code_verifier: verifier }, { noAuth: true, noCompanyHeader: true })
         .then((response) => confirmIssuedClientSession(String(response?.data?.access_token || ""), tenantSlug, { apiClient }))
         .catch(() => publishClientSessionState(false, { reason: "handoff-rejected", tenantSlug }));
