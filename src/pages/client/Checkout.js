@@ -8,7 +8,12 @@ import { api as apiClient, API_BASE_URL } from "../../utils/api";
 import { releasePendingCheckout, getOrCreateCheckoutRequestKey } from "../../utils/hostedCheckout";
 import { CartTypes, loadCart, saveCart, setCartTenantContext } from "../../utils/cart";
 import { getTenantHostMode } from "../../utils/tenant";
-import { publishClientSessionState, verifyClientSessionForTenant } from "../../utils/clientSession";
+import {
+  clientSessionLoggedOut,
+  issueClientSessionHandoff,
+  publishClientSessionState,
+  verifyClientSessionForTenant,
+} from "../../utils/clientSession";
 
 import { Box, Typography, Stack, CircularProgress } from "@mui/material";
 
@@ -377,6 +382,17 @@ export function CheckoutFormCore({
 
   useEffect(() => {
     if (!slugLocal) return undefined;
+    if (clientSessionLoggedOut(slugLocal)) {
+      try {
+        localStorage.removeItem("token");
+        localStorage.removeItem("clientToken");
+        localStorage.removeItem("role");
+        localStorage.removeItem("company_id");
+      } catch {}
+      setClient(null);
+      setGuest({ name: "", email: "" });
+      return undefined;
+    }
     let active = true;
     (async () => {
       const result = await verifyClientSessionForTenant(slugLocal, { apiClient });
@@ -388,6 +404,7 @@ export function CheckoutFormCore({
           reason: "verified-client-session",
           tenantSlug: slugLocal,
         });
+        issueClientSessionHandoff(slugLocal, { apiClient });
         return;
       }
       setClient(null);
