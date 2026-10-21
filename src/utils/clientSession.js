@@ -1,5 +1,6 @@
 import { jwtDecode } from "jwt-decode";
 import { normalizeTenantSlug, persistTenantSlug } from "./clientTenant";
+import { getTenantHostMode } from "./tenant";
 import {
   buildClientOrderDashboardReturnPath,
   normalizeClientOrderReturnPath,
@@ -8,7 +9,10 @@ import {
 
 export const CLIENT_SESSION_MESSAGE_TYPE = "schedulaa:client-session";
 export const CLIENT_SESSION_REQUEST_TYPE = "schedulaa:client-session-request";
+export const CLIENT_SESSION_HANDOFF_TYPE = "schedulaa:client-session-handoff";
+export const CLIENT_SESSION_LOGOUT_TYPE = "schedulaa:client-session-logout";
 export const CLIENT_SESSION_STATE_EVENT = "schedulaa:client-session-state";
+const HANDOFF_CODE_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
 const PRESENTATION_DETAIL_BLOCKLIST = new Set([
   "token",
   "access_token",
@@ -19,6 +23,8 @@ const PRESENTATION_DETAIL_BLOCKLIST = new Set([
   "phone",
   "profile",
   "headers",
+  "handoff_code",
+  "handoffCode",
 ]);
 const CLIENT_SESSION_REQUEST_TOKEN = "__schedulaaClientSessionToken";
 const AUTHENTICATED_REQUEST_CONTEXT = "__schedulaaAuthenticatedRequestContext";
@@ -81,6 +87,7 @@ const presentationDetail = (detail = {}) => {
   if (!detail || typeof detail !== "object") return safe;
   Object.entries(detail).forEach(([key, value]) => {
     if (PRESENTATION_DETAIL_BLOCKLIST.has(key)) return;
+    if (typeof value === "string" && HANDOFF_CODE_PATTERN.test(value)) return;
     safe[key] = value;
   });
   return safe;
@@ -138,14 +145,129 @@ export const readClientCredential = (token = readStorage("token")) => {
   return { kind, token: credential, claims, storedRole, clientClaim };
 };
 
+let suppressClientLogoutHook = false;
+
 const clearClientCredentialStorage = () => {
+  suppressClientLogoutHook = true;
   try {
     localStorage.removeItem("token");
     localStorage.removeItem("clientToken");
     localStorage.removeItem("role");
     localStorage.removeItem("company_id");
   } catch {}
+  suppressClientLogoutHook = false;
 };
+
+const installClientLogoutHook = () => {
+  const storagePrototype = typeof window !== "undefined" ? window.Storage?.prototype : null;
+  if (!storagePrototype || storagePrototype.__schedulaaClientLogoutHook) return;
+  const originalRemoveItem = storagePrototype.removeItem;
+  storagePrototype.removeItem = function removeClientSessionItem(key) {
+    if (
+      !suppressClientLogoutHook
+      && this === localStorage
+      && key === "token"
+      && this.getItem("role") === "client"
+    ) {
+      const slug = normalizeTenantSlug(this.getItem("site"));
+      suppressClientLogoutHook = true;
+      try {
+        if (slug) {
+          this.setItem(logoutStorageKey(slug), String(Date.now()));
+          this.removeItem(`schedulaa:client-session:${slug}`);
+          sessionStorage.removeItem(handoffStorageKey(slug));
+        }
+        this.removeItem("clientToken");
+        this.removeItem("role");
+        this.removeItem("company_id");
+      } catch {}
+      suppressClientLogoutHook = false;
+      if (slug) publishClientSessionState(false, { reason: "logout", tenantSlug: slug });
+    }
+    return originalRemoveItem.call(this, key);
+  };
+  try {
+    Object.defineProperty(storagePrototype, "__schedulaaClientLogoutHook", { value: true });
+  } catch {}
+};
+
+const handoffStorageKey = (tenantSlug) =>
+  `schedulaa:client-handoff:${normalizeTenantSlug(tenantSlug)}`;
+
+const logoutStorageKey = (tenantSlug) =>
+  `schedulaa:client-logout:${normalizeTenantSlug(tenantSlug)}`;
+
+export const clientSessionLoggedOut = (tenantSlug) => {
+  const slug = normalizeTenantSlug(tenantSlug);
+  if (!slug) return false;
+  try {
+    return Boolean(localStorage.getItem(logoutStorageKey(slug)));
+  } catch {
+    return false;
+  }
+};
+
+export const clearClientSessionLogout = (tenantSlug) => {
+  const slug = normalizeTenantSlug(tenantSlug);
+  if (!slug) return;
+  try {
+    localStorage.removeItem(logoutStorageKey(slug));
+  } catch {}
+};
+
+export const logoutClientSession = (tenantSlug, detail = {}) => {
+  const slug = normalizeTenantSlug(tenantSlug);
+  clearClientCredentialStorage();
+  try {
+    sessionStorage.removeItem(handoffStorageKey(slug));
+    localStorage.removeItem(`schedulaa:client-session:${slug}`);
+    if (slug) localStorage.setItem(logoutStorageKey(slug), String(Date.now()));
+  } catch {}
+  publishClientSessionState(false, {
+    ...detail,
+    reason: detail.reason || "logout",
+    tenantSlug: slug,
+  });
+  return true;
+};
+
+export const issueClientSessionHandoff = async (tenantSlug, { apiClient } = {}) => {
+  const slug = normalizeTenantSlug(tenantSlug);
+  if (!slug || getTenantHostMode() !== "custom" || clientSessionLoggedOut(slug) || !apiClient?.post) {
+    return "";
+  }
+  const credential = readClientCredential();
+  if (credential.kind !== "client" || !credential.token) return "";
+  try {
+    const response = await apiClient.post(
+      "/client-session/handoff",
+      { slug },
+      {
+        headers: { Authorization: `Bearer ${credential.token}` },
+        noAuth: true,
+        noCompanyHeader: true,
+      },
+    );
+    const code = String(response?.data?.handoff_code || "").trim();
+    if (!HANDOFF_CODE_PATTERN.test(code)) return "";
+    sessionStorage.setItem(handoffStorageKey(slug), code);
+    return code;
+  } catch {
+    return "";
+  }
+};
+
+export const consumeClientSessionHandoff = (tenantSlug) => {
+  const slug = normalizeTenantSlug(tenantSlug);
+  let code = "";
+  try {
+    code = sessionStorage.getItem(handoffStorageKey(slug)) || "";
+    sessionStorage.removeItem(handoffStorageKey(slug));
+  } catch {}
+  return HANDOFF_CODE_PATTERN.test(code) ? code : "";
+};
+
+installClientLogoutHook();
 
 export const CLIENT_MEMBERSHIP_CONFIRMATION_MESSAGE =
   "We could not confirm this account for this business. Please sign in again.";
@@ -163,7 +285,10 @@ export const persistVerifiedClientSession = (token, tenantSlug) => {
   localStorage.setItem("token", credential);
   localStorage.setItem("clientToken", credential);
   localStorage.setItem("role", "client");
-  if (slug) persistTenantSlug(slug);
+  if (slug) {
+    persistTenantSlug(slug);
+    clearClientSessionLogout(slug);
+  }
   return slug;
 };
 
@@ -299,17 +424,50 @@ export const confirmIssuedClientSession = async (token, tenantSlug, { apiClient 
 };
 
 let clientSessionBridgeInstalled = false;
+let clientSessionBridgeApi = null;
+
+const trustedParentData = (event) => {
+  const expectedOrigin = parentPresentationOrigin();
+  if (!expectedOrigin || event.source !== window.parent || event.origin !== expectedOrigin) return null;
+  const data = event.data;
+  if (!data || typeof data !== "object") return null;
+  return data;
+};
 
 export const installClientSessionBridge = (apiClient) => {
+  clientSessionBridgeApi = apiClient || null;
   if (clientSessionBridgeInstalled || typeof window === "undefined") return () => {};
   clientSessionBridgeInstalled = true;
   const onMessage = (event) => {
-    const expectedOrigin = parentPresentationOrigin();
-    if (!expectedOrigin || event.source !== window.parent || event.origin !== expectedOrigin) return;
-    const data = event.data;
-    if (!data || data.type !== CLIENT_SESSION_REQUEST_TYPE) return;
+    const data = trustedParentData(event);
+    if (!data) return;
     const tenantSlug = normalizeTenantSlug(data.tenantSlug);
     if (!tenantSlug) return;
+    const apiClient = clientSessionBridgeApi;
+    if (data.type === CLIENT_SESSION_LOGOUT_TYPE) {
+      logoutClientSession(tenantSlug, { reason: "parent-logout" });
+      return;
+    }
+    if (data.type === CLIENT_SESSION_HANDOFF_TYPE) {
+      const code = String(data.code || "").trim();
+      if (!HANDOFF_CODE_PATTERN.test(code) || !apiClient?.post) return;
+      apiClient.post(
+        "/client-session/handoff/redeem",
+        { code, slug: tenantSlug },
+        { noAuth: true, noCompanyHeader: true },
+      ).then((response) => {
+        const accessToken = String(response?.data?.access_token || "").trim();
+        if (!accessToken) {
+          publishClientSessionState(false, { reason: "handoff-rejected", tenantSlug });
+          return null;
+        }
+        return confirmIssuedClientSession(accessToken, tenantSlug, { apiClient });
+      }).catch(() => {
+        publishClientSessionState(false, { reason: "handoff-rejected", tenantSlug });
+      });
+      return;
+    }
+    if (data.type !== CLIENT_SESSION_REQUEST_TYPE) return;
     verifyClientSessionForTenant(tenantSlug, { apiClient }).then((result) => {
       const reply = {
         type: CLIENT_SESSION_MESSAGE_TYPE,
