@@ -6,7 +6,7 @@ import { CLIENT_BOOKING_BLOCKED_PUBLIC_MESSAGE } from "../../utils/bookingErrors
 import { normalizeCurrency } from "../../utils/currency";
 import { clearCart } from "../../utils/cart";
 import { buildHostedCheckoutPayload, startHostedCheckout, clearCheckoutRequestKey } from "../../utils/hostedCheckout";
-import { confirmIssuedClientSession } from "../../utils/clientSession";
+import { confirmIssuedClientSession, issueClientSessionHandoff } from "../../utils/clientSession";
 import { requestTransactionalNavigation } from "../../utils/transactionalFrameBridge";
 import { Box, Paper, Stack, Typography, List, ListItem, ListItemText, Divider, Button, Alert, AlertTitle } from "@mui/material";
 import { formatCurrency } from "../../utils/formatters";
@@ -1219,6 +1219,7 @@ const establishCheckoutClientSession = async (token) => {
     setErr("");
     setClient(result.profile);
     setGuest({ name: result.profile.name || "", email: result.profile.email });
+    issueClientSessionHandoff(tenantSlug, { apiClient });
   };
 const handleLoginSuccess = (token) => {
     establishCheckoutClientSession(token);
