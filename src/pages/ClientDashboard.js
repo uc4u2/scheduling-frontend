@@ -13,6 +13,7 @@ import { persistTenantSlug, resolveTenantSlug } from "../utils/clientTenant";
 import {
   buildClientLoginTarget,
   CLIENT_SESSION_STATE_EVENT,
+  logoutClientSession,
   publishClientSessionState,
 } from "../utils/clientSession";
 import { parseClientOrderDestination } from "../utils/transactionalFrameBridge";
@@ -94,10 +95,7 @@ export default function ClientDashboard({ tenantSlug: explicitTenantSlug = "" })
 
   const handleTabChange = (_, value) => {
     if (value === LOGOUT_TAB_INDEX) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("clientToken");
-      localStorage.removeItem("role");
-      publishClientSessionState(false, { reason: "logout", tenantSlug });
+      logoutClientSession(tenantSlug, { reason: "logout" });
       return;
     }
     setTab(value);
