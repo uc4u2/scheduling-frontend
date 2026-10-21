@@ -33,6 +33,7 @@ import { formatTimezoneLabel, getUserTimezone } from "../../utils/timezone";
 import Meta from "../../components/Meta";
 import { buildMarketingLegalUrl } from "../../config/origins";
 import {
+  CLIENT_SESSION_STATE_EVENT,
   confirmIssuedClientSession,
   publishClientSessionState,
   verifyClientSessionForTenant,
@@ -209,6 +210,29 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
     return () => {
       active = false;
     };
+  }, [returnTo, slug, trustedReturnTo]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const onClientSessionState = (event) => {
+      const detail = event?.detail || {};
+      if (detail.signedIn !== true) return;
+      if (detail.reason === "existing-client-session") return;
+      const eventSlug = String(detail.tenantSlug || "").trim();
+      if (slug && eventSlug && eventSlug !== slug) return;
+      const embedded = new URLSearchParams(window.location.search || "").get("embed") === "1";
+      const target = resolveClientAuthCompletionPath({
+        returnTo: returnTo || trustedReturnTo,
+        embedded,
+        slug,
+        activeSearch: window.location.search,
+        hostMode: getTenantHostMode(),
+      });
+      const here = `${window.location.pathname}${window.location.search || ""}`;
+      if (target && target !== here) window.location.assign(target);
+    };
+    window.addEventListener(CLIENT_SESSION_STATE_EVENT, onClientSessionState);
+    return () => window.removeEventListener(CLIENT_SESSION_STATE_EVENT, onClientSessionState);
   }, [returnTo, slug, trustedReturnTo]);
   const seoTitle = useMemo(() => {
     const action = tab === "register" ? "Sign Up" : "Login";
