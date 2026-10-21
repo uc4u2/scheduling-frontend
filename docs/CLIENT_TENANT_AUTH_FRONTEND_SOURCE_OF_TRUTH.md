@@ -173,6 +173,14 @@ The browser event and iframe message are presentation signals only. They never
 grant API authorization; backend JWT and tenant-membership checks remain
 authoritative.
 
+A verified custom-domain checkout session may ask the API for a one-time
+handoff code and keep only that code in session storage. The public shell
+forwards the code to the trusted app iframe. The iframe redeems it and still
+confirms `GET /me?slug=<tenant>` before publishing signed-in. Logout sends a
+signed-out signal across that same bridge and clears client credentials in
+both origins. `schedulaa:client-session:<slug>` remains a header hint, not
+authentication and not a reason to redirect.
+
 ### Auth entry points
 
 Critical client auth requests must send tenant context when available:
