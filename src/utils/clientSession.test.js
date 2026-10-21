@@ -1,11 +1,15 @@
 import {
   buildClientLoginTarget,
+  CLIENT_SESSION_HANDOFF_TYPE,
+  CLIENT_SESSION_LOGOUT_TYPE,
   CLIENT_SESSION_REQUEST_TYPE,
   CLIENT_SESSION_STATE_EVENT,
   CLIENT_MEMBERSHIP_CONFIRMATION_MESSAGE,
   confirmIssuedClientSession,
   installClientSessionBridge,
   invalidateActiveClientSession,
+  issueClientSessionHandoff,
+  logoutClientSession,
   markActiveClientSessionRequest,
   persistVerifiedClientSession,
   publishClientSessionState,
@@ -20,6 +24,7 @@ const unsignedJwt = (payload) => {
 describe("client session lifecycle", () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   it("publishes presentation state without granting authorization", () => {
@@ -424,5 +429,237 @@ describe("client session lifecycle", () => {
     expect(apiClient.get).not.toHaveBeenCalled();
     expect(localStorage.getItem("token")).toBe(managerToken);
     expect(localStorage.getItem("role")).toBe("manager");
+  });
+
+  it("stores only a one-time handoff code for a verified custom-domain client", async () => {
+    const previousLocation = window.location;
+    delete window.location;
+    window.location = { ...previousLocation, host: "checkout.example.test" };
+    const token = unsignedJwt({ role: "client", identity: "client:9" });
+    const code = "handoffcodehandoffcodehandoffcode1234";
+    localStorage.setItem("token", token);
+    localStorage.setItem("role", "client");
+    const apiClient = {
+      post: jest.fn().mockResolvedValue({
+        data: { handoff_code: code, expires_in: 60, tenant_slug: "beauty-salon" },
+      }),
+    };
+
+    try {
+      await expect(issueClientSessionHandoff("beauty-salon", { apiClient })).resolves.toBe(code);
+      expect(apiClient.post).toHaveBeenCalledWith(
+        "/client-session/handoff",
+        { slug: "beauty-salon" },
+        expect.objectContaining({ noAuth: true, noCompanyHeader: true }),
+      );
+      expect(sessionStorage.getItem("schedulaa:client-handoff:beauty-salon")).toBe(code);
+      expect(JSON.stringify({ ...localStorage })).not.toContain(code);
+      expect(JSON.stringify(apiClient.post.mock.calls[0][1])).not.toContain(token);
+    } finally {
+      window.location = previousLocation;
+    }
+  });
+
+  it("records a logout marker when the public shell removes a client token directly", () => {
+    const token = unsignedJwt({ role: "client", identity: "client:9" });
+    localStorage.setItem("token", token);
+    localStorage.setItem("clientToken", token);
+    localStorage.setItem("role", "client");
+    localStorage.setItem("site", "beauty-salon");
+    localStorage.setItem("schedulaa:client-session:beauty-salon", "1");
+    const received = [];
+    const listener = (event) => received.push(event.detail);
+    window.addEventListener(CLIENT_SESSION_STATE_EVENT, listener);
+
+    localStorage.removeItem("token");
+
+    expect(localStorage.getItem("token")).toBeNull();
+    expect(localStorage.getItem("clientToken")).toBeNull();
+    expect(localStorage.getItem("role")).toBeNull();
+    expect(localStorage.getItem("schedulaa:client-session:beauty-salon")).toBeNull();
+    expect(localStorage.getItem("schedulaa:client-logout:beauty-salon")).toEqual(expect.any(String));
+    expect(JSON.stringify(received)).not.toContain(token);
+    expect(received).toEqual([
+      expect.objectContaining({ signedIn: false, reason: "logout", tenantSlug: "beauty-salon" }),
+    ]);
+    window.removeEventListener(CLIENT_SESSION_STATE_EVENT, listener);
+  });
+
+  it("clears both the credential and the handoff code on logout without publishing either", () => {
+    const token = unsignedJwt({ role: "client", identity: "client:9" });
+    const code = "handoffcodehandoffcodehandoffcode1234";
+    localStorage.setItem("token", token);
+    localStorage.setItem("clientToken", token);
+    localStorage.setItem("role", "client");
+    localStorage.setItem("schedulaa:client-session:beauty-salon", "1");
+    sessionStorage.setItem("schedulaa:client-handoff:beauty-salon", code);
+    const received = [];
+    const listener = (event) => received.push(event.detail);
+    window.addEventListener(CLIENT_SESSION_STATE_EVENT, listener);
+
+    logoutClientSession("beauty-salon");
+
+    expect(localStorage.getItem("token")).toBeNull();
+    expect(localStorage.getItem("clientToken")).toBeNull();
+    expect(localStorage.getItem("schedulaa:client-session:beauty-salon")).toBeNull();
+    expect(sessionStorage.getItem("schedulaa:client-handoff:beauty-salon")).toBeNull();
+    expect(localStorage.getItem("schedulaa:client-logout:beauty-salon")).toEqual(expect.any(String));
+    expect(JSON.stringify(received)).not.toContain(token);
+    expect(JSON.stringify(received)).not.toContain(code);
+    expect(received).toEqual([
+      expect.objectContaining({ signedIn: false, reason: "logout", tenantSlug: "beauty-salon" }),
+    ]);
+    window.removeEventListener(CLIENT_SESSION_STATE_EVENT, listener);
+  });
+
+  it("rejects a foreign handoff and waits for membership before publishing the redeemed session", async () => {
+    const previousParent = Object.getOwnPropertyDescriptor(window, "parent");
+    const previousReferrer = Object.getOwnPropertyDescriptor(document, "referrer");
+    const parent = { postMessage: jest.fn() };
+    Object.defineProperty(window, "parent", { configurable: true, value: parent });
+    Object.defineProperty(document, "referrer", {
+      configurable: true,
+      value: "https://www.lumiereprivatesalon.com/login",
+    });
+    const code = "handoffcodehandoffcodehandoffcode1234";
+    const access = unsignedJwt({ role: "client", identity: "client:9" });
+    let releaseMembership;
+    const apiClient = {
+      post: jest.fn().mockResolvedValue({ data: { access_token: access, tenant_slug: "beauty-salon" } }),
+      get: jest.fn().mockReturnValue(new Promise((resolve) => {
+        releaseMembership = () => resolve({ data: { email: "ada@example.com", full_name: "Ada Client" } });
+      })),
+    };
+    installClientSessionBridge(apiClient);
+
+    window.dispatchEvent(new MessageEvent("message", {
+      source: parent,
+      origin: "https://evil.example",
+      data: { type: CLIENT_SESSION_HANDOFF_TYPE, tenantSlug: "beauty-salon", code },
+    }));
+    expect(apiClient.post).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new MessageEvent("message", {
+      source: parent,
+      origin: "https://www.lumiereprivatesalon.com",
+      data: {
+        type: CLIENT_SESSION_HANDOFF_TYPE,
+        tenantSlug: "beauty-salon",
+        code,
+        access_token: access,
+        email: "ada@example.com",
+      },
+    }));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(apiClient.post).toHaveBeenCalledWith(
+      "/client-session/handoff/redeem",
+      { code, slug: "beauty-salon" },
+      expect.objectContaining({ noAuth: true, noCompanyHeader: true }),
+    );
+    expect(localStorage.getItem("token")).toBeNull();
+    expect(apiClient.get).toHaveBeenCalledWith("/me", expect.objectContaining({
+      params: { slug: "beauty-salon" },
+      noCompanyHeader: true,
+    }));
+
+    releaseMembership();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(localStorage.getItem("token")).toBe(access);
+    const posted = JSON.stringify(parent.postMessage.mock.calls);
+    expect(posted).not.toContain(access);
+    expect(posted).not.toContain(code);
+    expect(posted).not.toContain("ada@example.com");
+    expect(parent.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ signedIn: true, tenantSlug: "beauty-salon" }),
+      "https://www.lumiereprivatesalon.com",
+    );
+
+    if (previousParent) Object.defineProperty(window, "parent", previousParent);
+    if (previousReferrer) Object.defineProperty(document, "referrer", previousReferrer);
+  });
+
+  it("does not keep a redeemed token when the tenant membership check fails", async () => {
+    const previousParent = Object.getOwnPropertyDescriptor(window, "parent");
+    const previousReferrer = Object.getOwnPropertyDescriptor(document, "referrer");
+    const parent = { postMessage: jest.fn() };
+    Object.defineProperty(window, "parent", { configurable: true, value: parent });
+    Object.defineProperty(document, "referrer", {
+      configurable: true,
+      value: "https://www.lumiereprivatesalon.com/login",
+    });
+    const access = unsignedJwt({ role: "client", identity: "client:9" });
+    const apiClient = {
+      post: jest.fn().mockResolvedValue({ data: { access_token: access } }),
+      get: jest.fn().mockRejectedValue({ response: { status: 404, data: { error: "Client not found" } } }),
+    };
+    installClientSessionBridge(apiClient);
+    window.dispatchEvent(new MessageEvent("message", {
+      source: parent,
+      origin: "https://www.lumiereprivatesalon.com",
+      data: {
+        type: CLIENT_SESSION_HANDOFF_TYPE,
+        tenantSlug: "other-salon",
+        code: "handoffcodehandoffcodehandoffcode1234",
+      },
+    }));
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(localStorage.getItem("token")).toBeNull();
+    expect(localStorage.getItem("role")).toBeNull();
+    expect(parent.postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ signedIn: false, tenantSlug: "other-salon", reason: "wrong-tenant" }),
+      "https://www.lumiereprivatesalon.com",
+    );
+    expect(JSON.stringify(parent.postMessage.mock.calls)).not.toContain(access);
+
+    if (previousParent) Object.defineProperty(window, "parent", previousParent);
+    if (previousReferrer) Object.defineProperty(document, "referrer", previousReferrer);
+  });
+
+  it("drops a redeemed manager token and signs out when the parent says logout", async () => {
+    const previousParent = Object.getOwnPropertyDescriptor(window, "parent");
+    const previousReferrer = Object.getOwnPropertyDescriptor(document, "referrer");
+    const parent = { postMessage: jest.fn() };
+    Object.defineProperty(window, "parent", { configurable: true, value: parent });
+    Object.defineProperty(document, "referrer", {
+      configurable: true,
+      value: "https://www.lumiereprivatesalon.com/login",
+    });
+    const manager = unsignedJwt({ role: "manager", sub: "manager@example.com" });
+    const client = unsignedJwt({ role: "client", identity: "client:9" });
+    localStorage.setItem("token", client);
+    localStorage.setItem("clientToken", client);
+    localStorage.setItem("role", "client");
+    const apiClient = {
+      post: jest.fn().mockResolvedValue({ data: { access_token: manager } }),
+      get: jest.fn(),
+    };
+    installClientSessionBridge(apiClient);
+    window.dispatchEvent(new MessageEvent("message", {
+      source: parent,
+      origin: "https://www.lumiereprivatesalon.com",
+      data: {
+        type: CLIENT_SESSION_HANDOFF_TYPE,
+        tenantSlug: "beauty-salon",
+        code: "handoffcodehandoffcodehandoffcode1234",
+      },
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(apiClient.get).not.toHaveBeenCalled();
+    expect(localStorage.getItem("token")).toBe(client);
+
+    window.dispatchEvent(new MessageEvent("message", {
+      source: parent,
+      origin: "https://www.lumiereprivatesalon.com",
+      data: { type: CLIENT_SESSION_LOGOUT_TYPE, tenantSlug: "beauty-salon" },
+    }));
+    expect(localStorage.getItem("token")).toBeNull();
+    expect(localStorage.getItem("role")).toBeNull();
+    expect(JSON.stringify(parent.postMessage.mock.calls)).not.toContain(client);
+    expect(JSON.stringify(parent.postMessage.mock.calls)).not.toContain(manager);
+
+    if (previousParent) Object.defineProperty(window, "parent", previousParent);
+    if (previousReferrer) Object.defineProperty(document, "referrer", previousReferrer);
   });
 });
