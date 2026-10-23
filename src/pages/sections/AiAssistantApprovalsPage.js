@@ -49,7 +49,10 @@ const recordHref = (item) => {
     return item.tool_name === "employees_invite" ? "/manager/add-recruiter" : "/manager/employee-profiles";
   }
   if (type === "time_entry" || type === "leave") return "/manager/attendance-calendar";
-  if (type === "order" || type === "shipment") return "/manager/dashboard?view=product-orders";
+  if (type === "order" || type === "shipment") return "/manager/advanced-management?panel=product-orders";
+  if (type === "product" || type === "product_variant") return "/manager/advanced-management?panel=products";
+  if (type === "digital_asset") return "/manager/advanced-management?panel=digital-products";
+  if (type === "package_profile" || type === "shipping_settings") return "/manager/advanced-management?panel=easypost-shipping";
   if (type === "payroll" || type === "subscription") return "/manager/payroll";
   return null;
 };
