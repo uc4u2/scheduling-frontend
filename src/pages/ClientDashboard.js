@@ -13,6 +13,7 @@ import { persistTenantSlug, resolveTenantSlug } from "../utils/clientTenant";
 import {
   buildClientLoginTarget,
   CLIENT_SESSION_STATE_EVENT,
+  logoutClientSession,
   publishClientSessionState,
 } from "../utils/clientSession";
 import { parseClientOrderDestination } from "../utils/transactionalFrameBridge";
@@ -68,11 +69,11 @@ export default function ClientDashboard({ tenantSlug: explicitTenantSlug = "" })
     const storedRole = String(localStorage.getItem("role") || "").toLowerCase();
     const isClientSession = storedRole === "client" || getRoleFromToken(token) === "client";
     if (!isClientSession) {
-      publishClientSessionState(false, { reason: "missing-client-session" });
+      publishClientSessionState(false, { reason: "missing-client-session", tenantSlug });
       navigate(buildClientLoginTarget(tenantSlug, location.search));
       return;
     }
-    publishClientSessionState(true, { reason: "active-client-session" });
+    publishClientSessionState(true, { reason: "active-client-session", tenantSlug });
     // Optionally, set tab by URL hash
     const orderDestination = parseClientOrderDestination(location.search, tenantSlug);
     const hash = window.location.hash.toLowerCase();
@@ -94,10 +95,7 @@ export default function ClientDashboard({ tenantSlug: explicitTenantSlug = "" })
 
   const handleTabChange = (_, value) => {
     if (value === LOGOUT_TAB_INDEX) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("clientToken");
-      localStorage.removeItem("role");
-      publishClientSessionState(false, { reason: "logout" });
+      logoutClientSession(tenantSlug, { reason: "logout" });
       return;
     }
     setTab(value);

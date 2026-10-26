@@ -132,10 +132,21 @@ These were audited and left unchanged because they were already sufficiently slu
 ### Client session lifecycle
 
 `frontend/src/utils/clientSession.js` is the shared presentation/session bridge.
-Login and registration publish `signedIn=true`; explicit logout and a verified
-rejection of the active client token publish `signedIn=false`. Direct React
-navigation returns to `/login?site=<tenant>&client=1`; embedded navigation also
-preserves the audited presentation parameters.
+A browser session is a client session for the current tenant only after
+`verifyClientSessionForTenant` confirms a client credential against the existing
+`GET /me?slug=<tenant>` membership contract. Manager, employee, platform, and
+unknown credentials are not client sessions and are not sent to `/me`. Login
+and registration may hold a newly issued token only long enough to call that
+check. They publish `signedIn=true` with the tenant slug only after
+verification succeeds. A failed check publishes `signedIn=false` for that
+tenant and does not replace another tenant's session or a newer login. Explicit
+logout and a verified rejection of the active client token also publish
+`signedIn=false`.
+The parent notification uses the referrer origin and never includes a token.
+Embedded public pages answer `schedulaa:client-session-request` with signed-in
+state and tenant slug only. Direct React navigation returns to
+`/login?site=<tenant>&client=1`; embedded navigation also preserves the audited
+presentation parameters.
 
 Only a request stamped with the active client token may invalidate that client
 session. A failed login (`noAuth`), an unrelated 401/403, a manager or employee
@@ -161,6 +172,15 @@ generic login-to-My-Bookings transition must not override this continuation.
 The browser event and iframe message are presentation signals only. They never
 grant API authorization; backend JWT and tenant-membership checks remain
 authoritative.
+
+A verified custom-domain checkout session uses a short-lived hidden iframe at
+the configured app origin. The app iframe generates a PKCE verifier locally,
+requests a challenge-bound handoff code from its exact parent origin, and
+redeems that code without exposing either the verifier or an access token to
+the tenant origin. A handoff code must never be stored in local or session
+storage on the tenant origin. Explicit logout revokes the client session at
+the backend before local credentials are cleared. `schedulaa:client-session:<slug>`
+remains a header hint, not authentication and not a reason to redirect.
 
 ### Auth entry points
 

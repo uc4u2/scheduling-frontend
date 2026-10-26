@@ -6,6 +6,16 @@ const FullApplication = React.lazy(() => import("./App"));
 const EmbeddedTransactionalApplication = React.lazy(() =>
   import("./EmbeddedTransactionalApp")
 );
+const ClientSessionBootstrap = React.lazy(() => import("./ClientSessionBootstrap"));
+
+export function isClientSessionBootstrapLocation(locationLike) {
+  const query = new URLSearchParams(locationLike?.search || "");
+  return locationLike?.pathname === "/login"
+    && query.get("bootstrap") === "1"
+    && query.get("embed") === "1"
+    && query.get("client") === "1"
+    && Boolean(query.get("site"));
+}
 
 function ApplicationLoader() {
   return (
@@ -26,6 +36,12 @@ function ApplicationLoader() {
 }
 
 export default function AppBootstrap() {
+  // A handoff receiver is not an interactive login page. Mounting the full
+  // app can navigate away (for example for an existing client session) and
+  // destroy the in-memory PKCE verifier while the parent creates its code.
+  if (isClientSessionBootstrapLocation(typeof window !== "undefined" ? window.location : null)) {
+    return <Suspense fallback={null}><ClientSessionBootstrap /></Suspense>;
+  }
   const useTransactionalRuntime = isEmbeddedTransactionalLocation(
     typeof window !== "undefined" ? window.location : null
   );

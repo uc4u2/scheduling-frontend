@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -32,7 +32,12 @@ import TimezoneSelect from "../../components/TimezoneSelect";
 import { formatTimezoneLabel, getUserTimezone } from "../../utils/timezone";
 import Meta from "../../components/Meta";
 import { buildMarketingLegalUrl } from "../../config/origins";
-import { publishClientSessionState } from "../../utils/clientSession";
+import {
+  CLIENT_SESSION_STATE_EVENT,
+  confirmIssuedClientSession,
+  publishClientSessionState,
+  verifyClientSessionForTenant,
+} from "../../utils/clientSession";
 import {
   normalizeClientOrderReturnPath,
   normalizePackageCheckoutReturnPath,
@@ -175,6 +180,60 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
       normalizeClientOrderReturnPath(requested, slug)
     );
   }, [returnTo, slug]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    let active = true;
+    (async () => {
+      const result = await verifyClientSessionForTenant(slug, { apiClient: api });
+      if (!active || !result.signedIn) {
+        if (active && result.reason && result.reason !== "missing-token") {
+          publishClientSessionState(false, { reason: result.reason, tenantSlug: slug || "" });
+        }
+        return;
+      }
+      publishClientSessionState(true, {
+        reason: "existing-client-session",
+        tenantSlug: slug || result.tenantSlug,
+      });
+      const embedded = new URLSearchParams(window.location.search || "").get("embed") === "1";
+      const target = resolveClientAuthCompletionPath({
+        returnTo: returnTo || trustedReturnTo,
+        embedded,
+        slug,
+        activeSearch: window.location.search,
+        hostMode: getTenantHostMode(),
+      });
+      const here = `${window.location.pathname}${window.location.search || ""}`;
+      if (target && target !== here) window.location.assign(target);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [returnTo, slug, trustedReturnTo]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const onClientSessionState = (event) => {
+      const detail = event?.detail || {};
+      if (detail.signedIn !== true) return;
+      if (detail.reason === "existing-client-session") return;
+      const eventSlug = String(detail.tenantSlug || "").trim();
+      if (slug && eventSlug && eventSlug !== slug) return;
+      const embedded = new URLSearchParams(window.location.search || "").get("embed") === "1";
+      const target = resolveClientAuthCompletionPath({
+        returnTo: returnTo || trustedReturnTo,
+        embedded,
+        slug,
+        activeSearch: window.location.search,
+        hostMode: getTenantHostMode(),
+      });
+      const here = `${window.location.pathname}${window.location.search || ""}`;
+      if (target && target !== here) window.location.assign(target);
+    };
+    window.addEventListener(CLIENT_SESSION_STATE_EVENT, onClientSessionState);
+    return () => window.removeEventListener(CLIENT_SESSION_STATE_EVENT, onClientSessionState);
+  }, [returnTo, slug, trustedReturnTo]);
   const seoTitle = useMemo(() => {
     const action = tab === "register" ? "Sign Up" : "Login";
     const siteLabel = slug ? `${slug} client account` : "Client account";
@@ -190,14 +249,15 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
   const [phone, setPhone] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const finish = (token) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("role", "client");
-    if (slug) localStorage.setItem("site", slug);
+  const finish = async (token) => {
+    const result = await confirmIssuedClientSession(token, slug, { apiClient: api });
+    if (!result.signedIn) {
+      setError(result.message);
+      return;
+    }
     // Next public pages live on a different origin from this legacy iframe.
     // Notify only the presentation shell that a client session now exists;
     // authentication remains entirely in the existing legacy client flow.
-    publishClientSessionState(true, { reason: "authenticated" });
     const embedded =
       typeof window !== "undefined" &&
       new URLSearchParams(window.location.search || "").get("embed") === "1";
@@ -218,7 +278,7 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
         email, password, role: "client", timezone, company_slug: slug || undefined
       }, { noAuth: true, noCompanyHeader: true });
       if (!data?.access_token) throw new Error("No token");
-      finish(data.access_token);
+      await finish(data.access_token);
     } catch (e) {
       setError(e?.response?.data?.error || "Login failed.");
     } finally { setBusy(false); }
@@ -261,7 +321,7 @@ export default function PublicClientAuth({ slug, returnTo = "" }) {
         email, password, role: "client", timezone, company_slug: slug || undefined
       }, { noAuth: true, noCompanyHeader: true });
       if (!data?.access_token) throw new Error("No token");
-      finish(data.access_token);
+      await finish(data.access_token);
     } catch (e) {
       const data = e?.response?.data;
       if (data?.error === "account_exists") {

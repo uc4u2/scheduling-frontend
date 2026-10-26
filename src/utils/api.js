@@ -4,6 +4,7 @@ import { clearCachedCompanyId, getAuthedCompanyId } from "./authedCompany";
 import { captureCurrencyFromResponse } from "./currency";
 import { canonicalWebsitePagePath } from "./websitePageApi";
 import { uploadWebsiteMediaFile } from "./websiteMediaUpload";
+import { installClientSessionBridge } from "./clientSession";
 import { installClientSessionInterceptors } from "./clientSessionInterceptors";
 
 /* ------------------------------ Base URL ------------------------------ */
@@ -195,6 +196,7 @@ const api = axios.create({
 });
 export { api };
 installClientSessionInterceptors(api);
+installClientSessionBridge(api);
 
 api.interceptors.request.use((config) => {
   const supportSession = getSupportSessionId();
