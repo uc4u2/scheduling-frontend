@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
   <title id="title">Ivory Studio desktop theme preview</title>
-  <desc id="desc">A bright ivory and champagne salon website with editorial photography and refined typography.</desc>
+  <desc id="desc">A bright ivory and champagne salon website with editorial photography, scrolling service rails, and a refined consultation panel.</desc>
   <defs>
     <linearGradient id="shade" x1="0" x2="1">
       <stop offset="0" stop-color="#2b1b13" stop-opacity=".78"/>
@@ -30,11 +30,15 @@
   <text x="95" y="535" fill="#fffaf4" font-family="Arial,sans-serif" font-size="18">Thoughtful appointments shaped around every client's goals and style.</text>
   <rect x="95" y="590" width="255" height="60" fill="#cfa15a"/>
   <text x="127" y="627" fill="#3e2c22" font-family="Arial,sans-serif" font-size="12" font-weight="bold" letter-spacing="3">EXPLORE SERVICES</text>
-  <rect y="766" width="1600" height="234" fill="#e7d8c6"/>
-  <text x="95" y="835" fill="#98642e" font-family="Arial,sans-serif" font-size="11" letter-spacing="5">THE EXPERIENCE</text>
-  <text x="95" y="910" fill="#3e2c22" font-family="Georgia,serif" font-size="50">Personal. Polished. Considered.</text>
-  <line x1="920" y1="835" x2="920" y2="950" stroke="#d6c1a7"/>
-  <line x1="1190" y1="835" x2="1190" y2="950" stroke="#d6c1a7"/>
-  <text x="965" y="885" fill="#3e2c22" font-family="Georgia,serif" font-size="24">Live services</text>
-  <text x="1235" y="885" fill="#3e2c22" font-family="Georgia,serif" font-size="24">Easy booking</text>
+  <rect x="1065" y="510" width="390" height="175" fill="#fffaf4" fill-opacity=".94" stroke="#d6c1a7"/>
+  <text x="1100" y="548" fill="#98642e" font-family="Arial,sans-serif" font-size="10" letter-spacing="4">THE STUDIO EXPERIENCE</text>
+  <text x="1100" y="588" fill="#3e2c22" font-family="Georgia,serif" font-size="28">Personal time.</text>
+  <line x1="1100" y1="612" x2="1420" y2="612" stroke="#d6c1a7"/>
+  <text x="1100" y="642" fill="#78685f" font-family="Arial,sans-serif" font-size="13">Consultation-led appointments</text>
+  <rect y="766" width="1600" height="234" fill="#f8f3ec"/>
+  <rect x="0" y="797" width="1600" height="53" fill="#fffaf4" stroke="#d6c1a7"/>
+  <text x="85" y="830" fill="#98642e" font-family="Arial,sans-serif" font-size="12" letter-spacing="3">HAIR COLOUR</text><text x="315" y="830" fill="#78685f" font-family="Arial,sans-serif" font-size="12" letter-spacing="3">CUT &amp; STYLING</text><text x="615" y="830" fill="#98642e" font-family="Arial,sans-serif" font-size="12" letter-spacing="3">MAKEUP</text><text x="795" y="830" fill="#78685f" font-family="Arial,sans-serif" font-size="12" letter-spacing="3">BROW CARE</text><text x="1025" y="830" fill="#98642e" font-family="Arial,sans-serif" font-size="12" letter-spacing="3">CONSULTATION FIRST</text>
+  <rect x="0" y="865" width="1600" height="53" fill="#e7d8c6"/>
+  <text x="100" y="898" fill="#3e2c22" font-family="Arial,sans-serif" font-size="12" letter-spacing="3">PERSONAL APPOINTMENTS</text><text x="450" y="898" fill="#3e2c22" font-family="Arial,sans-serif" font-size="12" letter-spacing="3">THOUGHTFUL DETAIL</text><text x="750" y="898" fill="#3e2c22" font-family="Arial,sans-serif" font-size="12" letter-spacing="3">TAILORED GUIDANCE</text><text x="1040" y="898" fill="#3e2c22" font-family="Arial,sans-serif" font-size="12" letter-spacing="3">BOOK WITH CONFIDENCE</text>
+  <text x="95" y="965" fill="#98642e" font-family="Arial,sans-serif" font-size="11" letter-spacing="5">CURRENT IVORY STUDIO STARTER</text>
 </svg>

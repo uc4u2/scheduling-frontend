@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="430" height="900" viewBox="0 0 430 900" role="img" aria-labelledby="title desc">
   <title id="title">Ivory Studio mobile theme preview</title>
-  <desc id="desc">A mobile salon website with warm editorial photography, clear branding, and booking calls to action.</desc>
+  <desc id="desc">A mobile salon website with warm editorial photography, service rails, and booking calls to action.</desc>
   <defs>
     <linearGradient id="shade" x1="0" x2="0" y1="0" y2="1">
       <stop offset="0" stop-color="#2b1b13" stop-opacity=".35"/>
@@ -24,8 +24,10 @@
   <text x="26" y="580" fill="#fffaf4" font-family="Arial,sans-serif" font-size="13">and connected booking.</text>
   <rect x="26" y="614" width="236" height="55" fill="#cfa15a"/>
   <text x="55" y="647" fill="#3e2c22" font-family="Arial,sans-serif" font-size="11" font-weight="bold" letter-spacing="2">EXPLORE SERVICES</text>
-  <rect y="712" width="430" height="188" fill="#e7d8c6"/>
-  <text x="25" y="760" fill="#98642e" font-family="Arial,sans-serif" font-size="9" letter-spacing="4">THE EXPERIENCE</text>
-  <text x="24" y="816" fill="#3e2c22" font-family="Georgia,serif" font-size="34">Personal. Polished.</text>
-  <text x="24" y="856" fill="#3e2c22" font-family="Georgia,serif" font-size="34">Considered.</text>
+  <rect y="712" width="430" height="188" fill="#f8f3ec"/>
+  <rect y="735" width="430" height="38" fill="#fffaf4" stroke="#d6c1a7"/>
+  <text x="16" y="759" fill="#98642e" font-family="Arial,sans-serif" font-size="7" letter-spacing="1.5">HAIR COLOUR</text><text x="123" y="759" fill="#78685f" font-family="Arial,sans-serif" font-size="7" letter-spacing="1.5">CUT &amp; STYLE</text><text x="231" y="759" fill="#98642e" font-family="Arial,sans-serif" font-size="7" letter-spacing="1.5">MAKEUP</text><text x="311" y="759" fill="#78685f" font-family="Arial,sans-serif" font-size="7" letter-spacing="1.5">BROWS</text>
+  <rect y="787" width="430" height="38" fill="#e7d8c6"/>
+  <text x="19" y="811" fill="#3e2c22" font-family="Arial,sans-serif" font-size="7" letter-spacing="1">PERSONAL APPOINTMENTS  •  THOUGHTFUL DETAIL</text>
+  <text x="24" y="864" fill="#98642e" font-family="Arial,sans-serif" font-size="8" letter-spacing="3">CURRENT IVORY STUDIO STARTER</text>
 </svg>
