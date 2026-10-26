@@ -6,7 +6,11 @@ const isRender = Boolean(
   String(process.env.RENDER_SERVICE_ID || "").trim()
 );
 
-const defaultMemoryMb = isRender ? 4096 : 4096;
+// Render's static build container has a lower memory ceiling than the local
+// development machine.  Keeping Node below that ceiling lets webpack fail
+// normally instead of having the platform terminate the build mid-compilation.
+// An explicit NODE_MAX_OLD_SPACE_SIZE still takes precedence for larger plans.
+const defaultMemoryMb = isRender ? 2048 : 4096;
 const configuredMemoryMb = Number(process.env.NODE_MAX_OLD_SPACE_SIZE || defaultMemoryMb);
 const maxOldSpaceSizeMb = Number.isFinite(configuredMemoryMb) && configuredMemoryMb > 0
   ? Math.trunc(configuredMemoryMb)
