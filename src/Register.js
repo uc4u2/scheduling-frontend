@@ -7,7 +7,6 @@ import {
   Box,
   Stack,
   Tooltip,
-  IconButton,
   FormControlLabel,
   Checkbox,
   Link as MuiLink,
@@ -16,7 +15,6 @@ import {
   useTheme,
 } from "@mui/material";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PasswordField from "./PasswordField";
 import api from "./utils/api";
 import TimezoneSelect from "./components/TimezoneSelect";
@@ -26,6 +24,11 @@ import { getSessionUser, getAuthRedirectTarget } from "./utils/authRedirect";
 import { buildMarketingLegalUrl, buildMarketingUrl } from "./config/origins";
 import { getUserTimezone, formatTimezoneLabel } from "./utils/timezone";
 import { trackGAEvent, trackGAEventOnce } from "./analytics/ga";
+import {
+  firstRegistrationErrorField,
+  passwordRequirements,
+  validateRegistrationForm,
+} from "./utils/registrationValidation";
 
 const ROLE_OPTIONS = [
   {
@@ -62,6 +65,7 @@ const Register = ({ slugOverride = "" }) => {
   const [showTimezoneSelect, setShowTimezoneSelect] = useState(false);
   const [role, setRole] = useState("owner");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
@@ -82,35 +86,45 @@ const Register = ({ slugOverride = "" }) => {
     () => String(slugOverride || "").trim() || siteParam || persistedSite,
     [persistedSite, siteParam, slugOverride]
   );
-  const passwordChecklist = useMemo(
-    () => [
-      { label: "At least 8 characters", pass: password.length >= 8 },
-      { label: "One uppercase letter", pass: /[A-Z]/.test(password) },
-      { label: "One lowercase letter", pass: /[a-z]/.test(password) },
-      { label: "One number", pass: /\d/.test(password) },
-      { label: "One symbol", pass: /[^A-Za-z0-9]/.test(password) },
-    ],
-    [password]
-  );
+  const passwordChecklist = useMemo(() => passwordRequirements(password), [password]);
 
-  const passwordIsStrong = passwordChecklist.every((req) => req.pass);
   const passwordsMatch = password && password === confirmPassword;
-  const canSubmit =
-    Boolean(firstName && lastName && email && phone && password && timezone && role) &&
-    passwordIsStrong &&
-    passwordsMatch &&
-    !loading &&
-    acceptedTerms;
+  const clearFieldError = (field) => {
+    setFieldErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const focusField = (field) => {
+    if (!field || typeof document === "undefined") return;
+    window.setTimeout(() => document.getElementById(`register-${field}`)?.focus(), 0);
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!canSubmit) {
-      setError("Double-check the fields above and try again.");
+    const clientErrors = validateRegistrationForm({
+      firstName,
+      lastName,
+      email,
+      phone,
+      password,
+      confirmPassword,
+      timezone,
+      acceptedTerms,
+    });
+    if (Object.keys(clientErrors).length) {
+      setFieldErrors(clientErrors);
+      setError("A few details need your attention.");
+      focusField(firstRegistrationErrorField(clientErrors));
       return;
     }
     setLoading(true);
     setError("");
     setMessage("");
+    setFieldErrors({});
     const targetRole = getRoleMeta(role).apiValue;
     if (targetRole === "recruiter") {
       setError("Employees are invited by their manager.");
@@ -150,7 +164,18 @@ const Register = ({ slugOverride = "" }) => {
       const nextPath = loginParams.toString() ? `/login?${loginParams.toString()}` : "/login";
       setTimeout(() => navigate(nextPath), 1500);
     } catch (err) {
-      setError(err.response?.data?.error || "Registration failed!");
+      const serverErrors = err.response?.data?.field_errors;
+      if (serverErrors && typeof serverErrors === "object") {
+        setFieldErrors(serverErrors);
+        setError("A few details need your attention.");
+        focusField(firstRegistrationErrorField(serverErrors));
+      } else if (err.response?.data?.error === "account_exists") {
+        setFieldErrors({ email: err.response?.data?.message || "An account already exists for this email. Please log in or reset your password." });
+        setError("An account already exists for this email.");
+        focusField("email");
+      } else {
+        setError(err.response?.data?.message || "We could not create your account right now. Please try again.");
+      }
     }
     setLoading(false);
   };
@@ -282,54 +307,85 @@ const Register = ({ slugOverride = "" }) => {
               </Typography>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={isMobile ? 1.8 : 2.5}>
                 <TextField
+                  id="register-first_name"
                   label="First Name"
                   fullWidth
                   sx={authInputSx}
                   value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  onChange={(e) => {
+                    setFirstName(e.target.value);
+                    clearFieldError("first_name");
+                  }}
                   autoComplete="given-name"
                   inputProps={{ autoCapitalize: "words" }}
                   required
+                  error={Boolean(fieldErrors.first_name)}
+                  helperText={fieldErrors.first_name}
                 />
                 <TextField
+                  id="register-last_name"
                   label="Last Name"
                   fullWidth
                   sx={authInputSx}
                   value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  onChange={(e) => {
+                    setLastName(e.target.value);
+                    clearFieldError("last_name");
+                  }}
                   autoComplete="family-name"
                   inputProps={{ autoCapitalize: "words" }}
                   required
+                  error={Boolean(fieldErrors.last_name)}
+                  helperText={fieldErrors.last_name}
                 />
               </Stack>
+              <Typography variant="caption" color="text.secondary" sx={{ mt: isMobile ? -0.8 : -1.25, px: 0.25 }}>
+                This creates the first owner account for the workspace. Practice details can be completed after signup.
+              </Typography>
               <TextField
+                id="register-email"
                 label="Email"
                 fullWidth
                 sx={authInputSx}
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearFieldError("email");
+                }}
                 inputProps={{ inputMode: "email", autoCapitalize: "none" }}
                 autoComplete="email"
                 required
+                error={Boolean(fieldErrors.email)}
+                helperText={fieldErrors.email}
               />
               <TextField
+                id="register-phone"
                 label="Phone"
                 fullWidth
                 sx={authInputSx}
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  clearFieldError("phone");
+                }}
                 inputProps={{ inputMode: "tel" }}
                 autoComplete="tel"
                 required
+                error={Boolean(fieldErrors.phone)}
+                helperText={fieldErrors.phone || "Use a number you can access, for example +1 416 555 0123."}
               />
               <PasswordField
+                id="register-password"
                 label="Password"
                 fullWidth
                 sx={authInputSx}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  clearFieldError("password");
+                }}
                 InputLabelProps={{
                   shrink: true,
                   sx: {
@@ -337,31 +393,37 @@ const Register = ({ slugOverride = "" }) => {
                   },
                 }}
                 autoComplete="new-password"
-                helperText={
-                  isMobile ? (
-                    ""
-                  ) : (
-                    <Box display="inline-flex" alignItems="center" gap={0.5}>
-                      Use 12+ characters with numbers, letters, and symbols.
-                      <Tooltip
-                        title="At least 12 characters · One uppercase letter · One lowercase letter · One number · One symbol"
-                      >
-                        <IconButton size="small" sx={{ p: 0 }}>
-                          <InfoOutlinedIcon fontSize="inherit" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  )
-                }
+                error={Boolean(fieldErrors.password)}
+                helperText={fieldErrors.password}
                 required
               />
+              <Box sx={{ mt: isMobile ? -1.1 : -1.4, px: 0.5 }} aria-live="polite">
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.35 }}>
+                  Your password needs:
+                </Typography>
+                <Stack direction="row" flexWrap="wrap" gap={0.65}>
+                  {passwordChecklist.map((requirement) => (
+                    <Typography
+                      key={requirement.key}
+                      variant="caption"
+                      sx={{ color: requirement.pass ? "success.main" : "text.secondary", fontWeight: requirement.pass ? 700 : 400 }}
+                    >
+                      {requirement.pass ? "✓" : "○"} {requirement.label}
+                    </Typography>
+                  ))}
+                </Stack>
+              </Box>
 
               <PasswordField
+                id="register-password_confirm"
                 label="Confirm Password"
                 fullWidth
                 sx={authInputSx}
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  clearFieldError("password_confirm");
+                }}
                 InputLabelProps={{
                   shrink: true,
                   sx: {
@@ -369,9 +431,9 @@ const Register = ({ slugOverride = "" }) => {
                   },
                 }}
                 autoComplete="new-password"
-                error={Boolean(confirmPassword) && !passwordsMatch}
+                error={Boolean(fieldErrors.password_confirm) || (Boolean(confirmPassword) && !passwordsMatch)}
                 helperText={
-                  confirmPassword && !passwordsMatch ? "Passwords must match" : ""
+                  fieldErrors.password_confirm || (confirmPassword && !passwordsMatch ? "Passwords do not match." : "")
                 }
                 required
               />
@@ -407,7 +469,10 @@ const Register = ({ slugOverride = "" }) => {
                     <TimezoneSelect
                       label="Timezone"
                       value={timezone}
-                      onChange={setTimezone}
+                      onChange={(value) => {
+                        setTimezone(value);
+                        clearFieldError("timezone");
+                      }}
                       textFieldSx={authInputSx}
                       helperText={isMobile ? "" : undefined}
                       showQuickAction={!isMobile}
@@ -423,8 +488,8 @@ const Register = ({ slugOverride = "" }) => {
                   textFieldSx={authInputSx}
                   helperText={
                     isMobile
-                      ? ""
-                      : undefined
+                      ? fieldErrors.timezone || ""
+                      : fieldErrors.timezone || undefined
                   }
                   showQuickAction={!isMobile}
                   required
@@ -465,8 +530,12 @@ const Register = ({ slugOverride = "" }) => {
               <FormControlLabel
                 control={
                   <Checkbox
+                    inputProps={{ id: "register-agreed_to_terms" }}
                     checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    onChange={(e) => {
+                      setAcceptedTerms(e.target.checked);
+                      clearFieldError("agreed_to_terms");
+                    }}
                     color="primary"
                     size={isMobile ? "small" : "medium"}
                   />
@@ -498,12 +567,17 @@ const Register = ({ slugOverride = "" }) => {
                 }
                 sx={{ alignItems: "flex-start", ml: -0.25 }}
               />
+              {fieldErrors.agreed_to_terms ? (
+                <Typography color="error" variant="caption" sx={{ mt: isMobile ? -1.1 : -1.5, px: 0.25 }}>
+                  {fieldErrors.agreed_to_terms}
+                </Typography>
+              ) : null}
 
               <Button
                 variant="contained"
                 fullWidth
                 type="submit"
-                disabled={!canSubmit}
+                disabled={loading}
                 sx={authButtonSx}
               >
                 {loading ? "Registering..." : "Create account"}
