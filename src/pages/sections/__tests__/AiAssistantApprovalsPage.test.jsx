@@ -90,4 +90,17 @@ describe("AiAssistantApprovalsPage", () => {
     expect(screen.getByText(/could not confirm/i)).toBeTruthy();
     expect(screen.queryByRole("link", { name: "http://evil.example/link" })).toBeNull();
   });
+
+  test("links employee permission and company-profile approvals to their working manager views", async () => {
+    mockOperations.mockResolvedValue({
+      items: [
+        pending({ id: "employee", tool_name: "employees_update_permissions", target: { type: "employee_permissions", id: "19" }, preview: { action: "Update employee permissions", handoffs: { profile_image: "/manager/employee-profiles?employee_id=19" } } }),
+        pending({ id: "company", tool_name: "company_profile_update", target: { type: "company_profile", id: "4" }, preview: { action: "Update Company Profile", handoffs: { logo_upload: "/manager/dashboard?view=settings" } } }),
+      ],
+    });
+    render(<AiAssistantApprovalsPage />);
+    expect((await screen.findByRole("link", { name: /employee_permissions #19/i })).getAttribute("href")).toBe("/manager/employee-profiles?employee_id=19");
+    expect(screen.getByRole("link", { name: /company_profile #4/i }).getAttribute("href")).toBe("/manager/dashboard?view=settings");
+    expect(screen.getByRole("link", { name: /Open logo upload/i }).getAttribute("href")).toBe("/manager/dashboard?view=settings");
+  });
 });

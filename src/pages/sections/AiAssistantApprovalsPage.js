@@ -46,8 +46,10 @@ const recordHref = (item) => {
   if (type === "service" || type === "package") return "/manager/service-management";
   if (type === "website_page" || type === "website" || type === "media" || type === "domain") return "/manager/website";
   if (type === "employee") {
-    return item.tool_name === "employees_invite" ? "/manager/add-recruiter" : "/manager/employee-profiles";
+    return item.tool_name === "employees_invite" ? "/manager/add-recruiter" : `/manager/employee-profiles${id ? `?employee_id=${encodeURIComponent(id)}` : ""}`;
   }
+  if (type === "employee_permissions") return `/manager/employee-profiles${id ? `?employee_id=${encodeURIComponent(id)}` : ""}`;
+  if (type === "company_profile") return "/manager/dashboard?view=settings";
   if (type === "time_entry" || type === "leave") return "/manager/attendance-calendar";
   if (type === "order" || type === "shipment") return "/manager/advanced-management?panel=product-orders";
   if (type === "product" || type === "product_variant") return "/manager/advanced-management?panel=products";
@@ -58,6 +60,11 @@ const recordHref = (item) => {
 };
 
 const httpsUrl = (value) => (typeof value === "string" && value.startsWith("https://") ? value : "");
+const managerHref = (value) => (typeof value === "string" && value.startsWith("/manager/") ? value : "");
+
+const handoffs = (preview) => Object.entries(preview?.handoffs || (preview?.handoff ? { manager_setup: preview.handoff } : {}))
+  .map(([label, url]) => ({ label: label.replace(/_/g, " "), url: managerHref(url) }))
+  .filter((item) => item.url);
 
 const completion = (item, t) => {
   if (item.state === "succeeded") {
@@ -178,6 +185,7 @@ export default function AiAssistantApprovalsPage() {
           const href = recordHref(item);
           const checkout = httpsUrl(item.result?.checkout_url);
           const hosted = httpsUrl(item.result?.url);
+          const itemHandoffs = handoffs(item.preview);
           const needsTransfer = item.state === "pending_approval" && item.preview?.requires_transfer_confirmation === true;
           const transferReady = (confirmations[item.id] || "") === "TRANSFER" && Boolean(passwords[item.id]);
           return (
@@ -212,6 +220,11 @@ export default function AiAssistantApprovalsPage() {
                   {t("settings.aiAssistants.approvals.openResultPage", "Open the hosted page")}
                 </Button>
               )}
+              {itemHandoffs.map((handoff) => (
+                <Button key={handoff.label} component="a" href={handoff.url} variant="outlined" sx={{ mt: 1, mr: 1 }}>
+                  {`Open ${handoff.label}`}
+                </Button>
+              ))}
               {needsTransfer && (
                 <Stack spacing={1} sx={{ mt: 1 }}>
                   <TextField
