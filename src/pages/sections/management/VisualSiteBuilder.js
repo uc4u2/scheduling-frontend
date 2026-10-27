@@ -3299,6 +3299,7 @@ export default function VisualSiteBuilder({ companyId: companyIdProp }) {
   const [styleMsg, setStyleMsg] = useState("");
   const [styleErr, setStyleErr] = useState("");
   const [pendingRendererStyle, setPendingRendererStyle] = useState(null);
+  const [pendingStarterStyle, setPendingStarterStyle] = useState(null);
   const [nextJsPreviewToken, setNextJsPreviewToken] = useState("");
   const [nextJsPreviewUrl, setNextJsPreviewUrl] = useState("");
   const [nextJsPreviewContextKey, setNextJsPreviewContextKey] = useState("");
@@ -5821,6 +5822,77 @@ async function applyStyleToAllPagesNow(overrideStyle = null) {
     if (applied) setPendingRendererStyle(null);
   }, [applyWebsiteStyle, pendingRendererStyle]);
 
+  const installWebsiteStyleStarter = useCallback(
+    async (style) => {
+      if (!companyId || !isNextJsStyle(style) || !style?.starterContentPackKey) return false;
+      setStyleSaving(true);
+      setStyleMsg("");
+      setStyleErr("");
+      try {
+        const operationId = `theme-starter-${nanoid()}`;
+        const settingsResponse = await wb.saveSettings(
+          companyId,
+          buildWebsiteStyleApplyPayload(style),
+          { publish: false, draftOnly: true, operationId }
+        );
+        const installResponse = await wb.installContentPack(companyId, style.starterContentPackKey, {
+          install_mode: "replace",
+          clear_existing: true,
+          visual_theme_key: style.key,
+          operation_id: operationId,
+        });
+        const automaticCheckpoint =
+          installResponse?.data?.automatic_checkpoint ||
+          settingsResponse?.data?.automatic_checkpoint ||
+          null;
+        const [installedPagesRes, installedSettingsRes, installedStatusRes] = await Promise.all([
+          wb.listPages(companyId),
+          wb.getSettings(companyId).catch(() => null),
+          wb.getStatus(companyId).catch(() => null),
+        ]);
+        const installedPages = (installedPagesRes?.data || [])
+          .map(normalizePage)
+          .map((page) => ensureSectionIds(withLiftedLayout(page)));
+        setPages(installedPages);
+        const installedSettings = installedSettingsRes?.data || installedSettingsRes || null;
+        if (installedSettings) setSiteSettings(installedSettings);
+        const installedStatus = installedStatusRes?.data || installedStatusRes || null;
+        if (installedStatus) setWebsiteStatus(installedStatus);
+        const home = installedPages.find((page) => page.is_homepage) || installedPages[0];
+        if (home) {
+          setSelectedId(home.id);
+          setEditing(home);
+        }
+        setStylePreviewFamily(style.key);
+        await loadCheckpoints(companyId);
+        setStyleMsg(
+          `${style.name} starter content is ready in your draft. Review it in Website Content, then publish when you are ready.${
+            automaticCheckpoint?.name ? ` Safety version saved: ${automaticCheckpoint.name}.` : ""
+          }`
+        );
+        setBuilderTabIndex(0);
+        return true;
+      } catch (e) {
+        setStyleErr(
+          e?.response?.data?.message ||
+            e?.response?.data?.error ||
+            e?.message ||
+            "Failed to install starter content."
+        );
+        return false;
+      } finally {
+        setStyleSaving(false);
+      }
+    },
+    [companyId, loadCheckpoints, setEditing]
+  );
+
+  const confirmStarterInstall = useCallback(async () => {
+    if (!pendingStarterStyle) return;
+    const installed = await installWebsiteStyleStarter(pendingStarterStyle);
+    if (installed) setPendingStarterStyle(null);
+  }, [installWebsiteStyleStarter, pendingStarterStyle]);
+
   // A module edit replaces the page object, but it does not change the route.
   // Use a primitive route key so ordinary typing cannot remint the signed
   // preview session and reload the entire iframe.
@@ -8327,6 +8399,7 @@ const autoProvisionIfEmpty = useCallback(
             setStyleGalleryPreviewUrl(previewUrl || "");
           }}
           onApply={requestWebsiteStyleApply}
+          onUseStarter={setPendingStarterStyle}
         />
         <Paper variant="outlined" sx={{ p: 2, borderRadius: 1.5, bgcolor: "background.paper" }}>
           <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ xs: "flex-start", md: "center" }}>
@@ -13753,6 +13826,35 @@ if (authError) {
           </Button>
           <Button variant="contained" onClick={confirmRendererSwitch} disabled={styleSaving}>
             {styleSaving ? "Switching..." : "Switch Draft Editor"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(pendingStarterStyle)}
+        onClose={() => !styleSaving && setPendingStarterStyle(null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          Use the full {pendingStarterStyle?.name || "Modern"} starter?
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Typography variant="body2">
+              This replaces the current draft pages with the complete starter, including its homepage contact form and other theme sections. Your live website will not change until you publish.
+            </Typography>
+            <Alert severity="warning" variant="outlined">
+              Any unpublished page content in this draft will be replaced. A safety version is created first so you can restore it if needed.
+            </Alert>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingStarterStyle(null)} disabled={styleSaving}>
+            Keep current draft
+          </Button>
+          <Button variant="contained" onClick={confirmStarterInstall} disabled={styleSaving}>
+            {styleSaving ? "Installing..." : "Use full starter"}
           </Button>
         </DialogActions>
       </Dialog>

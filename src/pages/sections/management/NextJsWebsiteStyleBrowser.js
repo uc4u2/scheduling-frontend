@@ -103,6 +103,7 @@ function ThemeCard({
   saving,
   onOpenPreview,
   onApply,
+  onUseStarter,
 }) {
   const isCurrentDraft =
     style.key === currentStyleKey &&
@@ -196,7 +197,7 @@ function ThemeCard({
           </Typography>
         ) : null}
 
-        <Stack direction="row" spacing={1} sx={{ pt: 0.25 }}>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ pt: 0.25 }}>
           <Button
             size="small"
             variant="outlined"
@@ -215,6 +216,16 @@ function ThemeCard({
           >
             {isCurrentDraft ? "Applied" : "Apply Theme"}
           </Button>
+          {style.starterContentPackKey && onUseStarter ? (
+            <Button
+              size="small"
+              variant="text"
+              onClick={() => onUseStarter(style)}
+              disabled={saving}
+            >
+              Use full starter
+            </Button>
+          ) : null}
         </Stack>
       </Stack>
     </Paper>
@@ -232,6 +243,7 @@ export default function NextJsWebsiteStyleBrowser({
   previewError,
   onPreview,
   onApply,
+  onUseStarter,
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewStyle, setPreviewStyle] = useState(null);
@@ -306,6 +318,7 @@ export default function NextJsWebsiteStyleBrowser({
           saving={saving}
           onOpenPreview={openPreview}
           onApply={onApply}
+          onUseStarter={onUseStarter}
         />
       ))}
     </Box>

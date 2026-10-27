@@ -7,6 +7,7 @@ const styles = [
   {
     key: "recommended-theme",
     version: 1,
+    starterContentPackKey: "salon-starter",
     name: "Recommended Theme",
     description: "A profession-specific website style.",
     recommended: true,
@@ -83,5 +84,27 @@ describe("NextJsWebsiteStyleBrowser", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Contact" }));
     await waitFor(() => expect(onPreview).toHaveBeenLastCalledWith(styles[0], ["contact"]));
+  });
+
+  it("offers the explicit full-starter action without overloading Apply Theme", () => {
+    const onUseStarter = jest.fn();
+    render(
+      <NextJsWebsiteStyleBrowser
+        styles={styles}
+        currentStyleKey="another-theme"
+        currentStyleVersion={1}
+        liveStyleKey="another-theme"
+        liveStyleVersion={1}
+        saving={false}
+        previewUrl=""
+        previewError=""
+        onPreview={jest.fn().mockResolvedValue(undefined)}
+        onApply={jest.fn()}
+        onUseStarter={onUseStarter}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Use full starter" }));
+    expect(onUseStarter).toHaveBeenCalledWith(styles[0]);
   });
 });
