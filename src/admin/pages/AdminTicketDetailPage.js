@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
+  Alert,
   Button,
   Chip,
   CircularProgress,
@@ -72,6 +73,7 @@ export default function AdminTicketDetailPage() {
   const [assignedAdminId, setAssignedAdminId] = useState("");
   const [workspaceBusy, setWorkspaceBusy] = useState(false);
   const [workspaceNotice, setWorkspaceNotice] = useState("");
+  const [supportDelivery, setSupportDelivery] = useState(null);
   const [requestedScope, setRequestedScope] = useState("website_all");
   const [supportScopes, setSupportScopes] = useState(FALLBACK_SUPPORT_SCOPES);
   const theme = useTheme();
@@ -291,10 +293,37 @@ export default function AdminTicketDetailPage() {
       if (data?.support_session) {
         setTicket((prev) => (prev ? { ...prev, support_session: data.support_session } : prev));
       }
+      setSupportDelivery(data?.approval_delivery || null);
       return data?.support_session || null;
     } catch (err) {
       setError("Unable to request support session.");
       return null;
+    }
+  };
+
+  const resendSupportApproval = async () => {
+    if (workspaceBusy || !supportPending) return;
+    setWorkspaceBusy(true);
+    setWorkspaceNotice("");
+    setError("");
+    try {
+      const { data } = await platformAdminApi.post(`/tickets/${id}/support-session/request`, {
+        scope: supportSession?.scope || requestedScope,
+        resend_approval: true,
+      });
+      if (data?.support_session) {
+        setTicket((prev) => (prev ? { ...prev, support_session: data.support_session } : prev));
+      }
+      setSupportDelivery(data?.approval_delivery || null);
+      setWorkspaceNotice(
+        data?.approval_delivery?.queued
+          ? "Approval email queued again. Ask the manager to check their inbox and spam folder."
+          : "The approval email could not be queued. Review the delivery status below."
+      );
+    } catch (err) {
+      setError(err?.response?.data?.error || "Unable to resend the approval email.");
+    } finally {
+      setWorkspaceBusy(false);
     }
   };
 
@@ -347,9 +376,7 @@ export default function AdminTicketDetailPage() {
       if (workspaceAction.kind === "request") {
         const session = await requestSupportSession();
         if (session) {
-          setWorkspaceNotice(
-            "Access request sent. This panel refreshes automatically after the manager approves it."
-          );
+          setWorkspaceNotice("Access request created. Check the delivery status below before waiting for approval.");
         }
         return;
       }
@@ -519,6 +546,13 @@ export default function AdminTicketDetailPage() {
                   {supportSession.scope_description}
                 </Typography>
               )}
+              {supportDelivery && (
+                <Alert severity={supportDelivery.queued ? "info" : "error"}>
+                  {supportDelivery.queued
+                    ? "Approval email queued for the tenant manager. Delivery is tracked in Transactional Email Health."
+                    : `Approval email was not queued${supportDelivery.error ? ` (${supportDelivery.error.replace(/_/g, " ")})` : ""}. Fix email delivery, then resend.`}
+                </Alert>
+              )}
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
                 <Button
                   variant={workspaceAction.kind === "waiting" ? "outlined" : "contained"}
@@ -532,13 +566,18 @@ export default function AdminTicketDetailPage() {
                   {workspaceBusy ? "Preparing…" : workspaceAction.label}
                 </Button>
                 {workspaceAction.kind === "waiting" && (
-                  <Button
-                    variant="text"
-                    disabled={workspaceBusy}
-                    onClick={() => loadTicket(undefined, { silent: true })}
-                  >
-                    Refresh approval status
-                  </Button>
+                  <>
+                    <Button
+                      variant="text"
+                      disabled={workspaceBusy}
+                      onClick={() => loadTicket(undefined, { silent: true })}
+                    >
+                      Refresh approval status
+                    </Button>
+                    <Button variant="outlined" disabled={workspaceBusy} onClick={resendSupportApproval}>
+                      Resend approval email
+                    </Button>
+                  </>
                 )}
                 {supportActive && (
                   <>
