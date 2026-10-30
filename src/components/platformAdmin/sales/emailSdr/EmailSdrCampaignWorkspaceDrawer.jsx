@@ -513,14 +513,21 @@ function CampaignWorkspacePanel({
   onMarkHotLeadContacted,
   onCreateHotLeadDeal,
   onCloseHotLead,
+  onSaveDeliveryLimits,
+  savingDeliveryLimits = false,
 }) {
   const [tab, setTab] = useState("overview");
+  const [dailyTotalLimit, setDailyTotalLimit] = useState("");
   const campaign = workspace?.campaign || null;
   const overview = workspace?.overview || {};
 
   React.useEffect(() => {
     setTab("overview");
   }, [workspace?.campaign?.id]);
+
+  React.useEffect(() => {
+    setDailyTotalLimit(campaign?.daily_limit_total == null ? "" : String(campaign.daily_limit_total));
+  }, [campaign?.id, campaign?.daily_limit_total]);
 
   return (
     <Stack spacing={0} sx={{ height: "100%" }}>
@@ -589,6 +596,28 @@ function CampaignWorkspacePanel({
                     <Typography variant="body2" color="text.secondary">
                       Daily limit per agent: {campaign.daily_limit_per_agent || 0}
                     </Typography>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
+                      <TextField
+                        size="small"
+                        type="number"
+                        label="Campaign total per day"
+                        helperText="Across all assigned agents. Leave blank for no campaign-wide cap."
+                        value={dailyTotalLimit}
+                        onChange={(event) => setDailyTotalLimit(event.target.value)}
+                        inputProps={{ min: 1 }}
+                        sx={{ minWidth: { xs: "100%", sm: 280 } }}
+                      />
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        disabled={savingDeliveryLimits || !onSaveDeliveryLimits}
+                        onClick={() => onSaveDeliveryLimits(campaign.id, {
+                          daily_limit_total: dailyTotalLimit === "" ? null : Number(dailyTotalLimit),
+                        })}
+                      >
+                        Save limit
+                      </Button>
+                    </Stack>
                     <Typography variant="body2" color="text.secondary">
                       Provider: {campaign.provider_connection?.name || campaign.provider_connection_name || "Fallback"}
                     </Typography>
