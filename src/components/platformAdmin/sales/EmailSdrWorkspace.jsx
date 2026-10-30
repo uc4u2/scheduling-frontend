@@ -105,6 +105,7 @@ const emptyCampaignForm = {
   business_type: "",
   city: "",
   daily_limit_per_agent: 10,
+  daily_limit_total: "",
   send_window_start: "09:00",
   send_window_end: "17:00",
   timezone: "America/Toronto",
@@ -958,6 +959,7 @@ export default function EmailSdrWorkspace({
       const campaign = await createEmailCampaign({
         ...campaignForm,
         daily_limit_per_agent: Number(campaignForm.daily_limit_per_agent || 10),
+        daily_limit_total: campaignForm.daily_limit_total === "" ? null : Number(campaignForm.daily_limit_total),
         provider_connection_id: campaignForm.provider_connection_id ? Number(campaignForm.provider_connection_id) : null,
       });
       setCampaignForm(emptyCampaignForm);
@@ -1313,6 +1315,9 @@ export default function EmailSdrWorkspace({
       await updateEmailCampaignAutomationSettings(campaignId, payload);
       showBanner("success", "Campaign automation updated.");
       await loadWorkspace();
+      if (Number(activeCampaignWorkspaceId) === Number(campaignId)) {
+        await loadCampaignWorkspaceById(campaignId, { showLoader: false });
+      }
     } catch (error) {
       showBanner("error", error?.response?.data?.error || "Failed to update campaign automation.");
     } finally {
@@ -1967,6 +1972,8 @@ export default function EmailSdrWorkspace({
           onMarkHotLeadContacted={handleMarkHotLeadContacted}
           onCreateHotLeadDeal={handleCreateHotLeadDeal}
           onCloseHotLead={handleCloseHotLead}
+          onSaveDeliveryLimits={handleSaveCampaignAutomation}
+          savingDeliveryLimits={submitting}
           onBack={handleCloseCampaignWorkspace}
         />
       ) : (
@@ -2859,6 +2866,15 @@ export default function EmailSdrWorkspace({
               value={campaignForm.daily_limit_per_agent}
               onChange={(e) => setCampaignForm((prev) => ({ ...prev, daily_limit_per_agent: e.target.value }))}
               sx={{ minWidth: 180 }}
+            />
+            <TextField
+              label="Campaign total / day"
+              type="number"
+              value={campaignForm.daily_limit_total}
+              onChange={(e) => setCampaignForm((prev) => ({ ...prev, daily_limit_total: e.target.value }))}
+              helperText="Optional total across all agents"
+              inputProps={{ min: 1 }}
+              sx={{ minWidth: 210 }}
             />
             <TextField
               select
