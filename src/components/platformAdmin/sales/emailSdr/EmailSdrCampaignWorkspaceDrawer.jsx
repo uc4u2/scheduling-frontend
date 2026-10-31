@@ -518,6 +518,7 @@ function CampaignWorkspacePanel({
 }) {
   const [tab, setTab] = useState("overview");
   const [dailyTotalLimit, setDailyTotalLimit] = useState("");
+  const [dailyPerAgentLimit, setDailyPerAgentLimit] = useState("");
   const campaign = workspace?.campaign || null;
   const overview = workspace?.overview || {};
 
@@ -527,7 +528,8 @@ function CampaignWorkspacePanel({
 
   React.useEffect(() => {
     setDailyTotalLimit(campaign?.daily_limit_total == null ? "" : String(campaign.daily_limit_total));
-  }, [campaign?.id, campaign?.daily_limit_total]);
+    setDailyPerAgentLimit(campaign?.daily_limit_per_agent == null ? "" : String(campaign.daily_limit_per_agent));
+  }, [campaign?.id, campaign?.daily_limit_per_agent, campaign?.daily_limit_total]);
 
   return (
     <Stack spacing={0} sx={{ height: "100%" }}>
@@ -593,10 +595,17 @@ function CampaignWorkspacePanel({
                     <Typography variant="body2" color="text.secondary">
                       Send window: {[campaign.send_window_start, campaign.send_window_end].filter(Boolean).join(" - ") || "Not set"}{campaign.timezone ? ` • ${campaign.timezone}` : ""}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Daily limit per agent: {campaign.daily_limit_per_agent || 0}
-                    </Typography>
                     <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
+                      <TextField
+                        size="small"
+                        type="number"
+                        label="Campaign limit per sender"
+                        helperText="This must not exceed the sender and provider limits in Setup."
+                        value={dailyPerAgentLimit}
+                        onChange={(event) => setDailyPerAgentLimit(event.target.value)}
+                        inputProps={{ min: 1 }}
+                        sx={{ minWidth: { xs: "100%", sm: 280 } }}
+                      />
                       <TextField
                         size="small"
                         type="number"
@@ -612,10 +621,11 @@ function CampaignWorkspacePanel({
                         size="small"
                         disabled={savingDeliveryLimits || !onSaveDeliveryLimits}
                         onClick={() => onSaveDeliveryLimits(campaign.id, {
+                          daily_limit_per_agent: Number(dailyPerAgentLimit || 1),
                           daily_limit_total: dailyTotalLimit === "" ? null : Number(dailyTotalLimit),
                         })}
                       >
-                        Save limit
+                        Save delivery limits
                       </Button>
                     </Stack>
                     <Typography variant="body2" color="text.secondary">

@@ -419,6 +419,7 @@ export default function EmailSdrWorkspace({
   const [segmentDrafts, setSegmentDrafts] = useState({});
   const [templateDrafts, setTemplateDrafts] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadIssues, setLoadIssues] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
@@ -771,49 +772,42 @@ export default function EmailSdrWorkspace({
 
   const loadWorkspace = useCallback(async () => {
     setLoading(true);
+    setLoadIssues([]);
     try {
       const workspaceToRefresh = routeCampaignWorkspaceId || campaignWorkspaceId || null;
+      const requests = [
+        ["overview", getEmailSdrOverview],
+        ["operations summary", getEmailSdrOpsSummary],
+        ["campaigns", listEmailCampaigns],
+        ["email agents", listEmailAgents],
+        ["provider connections", listEmailProviderConnections],
+        ["segments", listEmailSegments],
+        ["templates", listEmailTemplates],
+        ["template packs", listEmailTemplatePacks],
+        ["routing rules", listEmailRoutingRules],
+        ["marketing leads", () => listMarketingChatbotLeads({ consent_only: false })],
+        ["messages", listEmailMessages],
+        ["hot leads", () => listHotLeads({ my_only: myHotLeadsOnly })],
+        ["daily agent limits", listEmailAgentLimitsToday],
+        ["new replies", () => listEmailInboundEvents({ queue: "new_replies", limit: 50 })],
+        ["unmatched replies", () => listEmailInboundEvents({ queue: "unmatched", limit: 50 })],
+        ["bounces", () => listEmailInboundEvents({ queue: "bounces", limit: 50 })],
+        ["needs-action replies", () => listEmailInboundEvents({ queue: "needs_action", limit: 50 })],
+        ["campaign review queue", listEmailCampaignReviewQueue],
+        ["reply review queue", listEmailReplyReviewQueue],
+      ];
+      const results = await Promise.allSettled(requests.map(([, request]) => request()));
+      const failedSections = results
+        .map((result, index) => (result.status === "rejected" ? requests[index][0] : null))
+        .filter(Boolean);
+      const values = results.map((result) => (result.status === "fulfilled" ? result.value : null));
       const [
-        overviewResp,
-        opsSummaryResp,
-        campaignRows,
-        emailAgentResp,
-        providerRows,
-        segmentRows,
-        templateRows,
-        templatePackRows,
-        routingRuleRows,
-        marketingLeadRows,
-        messageRows,
-        hotRows,
-        agentLimitRows,
-        inboundReplyRows,
-        unmatchedRows,
-        bounceRows,
-        needsActionRows,
-        campaignReviewResp,
-        replyReviewResp,
-      ] = await Promise.all([
-        getEmailSdrOverview(),
-        getEmailSdrOpsSummary(),
-        listEmailCampaigns(),
-        listEmailAgents(),
-        listEmailProviderConnections(),
-        listEmailSegments(),
-        listEmailTemplates(),
-        listEmailTemplatePacks(),
-        listEmailRoutingRules(),
-        listMarketingChatbotLeads({ consent_only: false }),
-        listEmailMessages(),
-        listHotLeads({ my_only: myHotLeadsOnly }),
-        listEmailAgentLimitsToday(),
-        listEmailInboundEvents({ queue: "new_replies", limit: 50 }),
-        listEmailInboundEvents({ queue: "unmatched", limit: 50 }),
-        listEmailInboundEvents({ queue: "bounces", limit: 50 }),
-        listEmailInboundEvents({ queue: "needs_action", limit: 50 }),
-        listEmailCampaignReviewQueue(),
-        listEmailReplyReviewQueue(),
-      ]);
+        overviewResp, opsSummaryResp, campaignRows, emailAgentResp, providerRows,
+        segmentRows, templateRows, templatePackRows, routingRuleRows, marketingLeadRows,
+        messageRows, hotRows, agentLimitRows, inboundReplyRows, unmatchedRows,
+        bounceRows, needsActionRows, campaignReviewResp, replyReviewResp,
+      ] = values;
+      setLoadIssues(failedSections);
       setOverview(overviewResp || {});
       setOpsSummary(opsSummaryResp || null);
       setCampaigns(campaignRows || []);
@@ -834,7 +828,11 @@ export default function EmailSdrWorkspace({
       setCampaignReviewRows(campaignReviewResp || []);
       setReplyReviewRows(replyReviewResp || []);
       if (workspaceToRefresh) {
-        await loadCampaignWorkspaceById(workspaceToRefresh);
+        try {
+          await loadCampaignWorkspaceById(workspaceToRefresh);
+        } catch (_error) {
+          setLoadIssues((previous) => [...previous, "campaign workspace"]);
+        }
       }
       setProviderDrafts((prev) => {
         const next = { ...prev };
@@ -1949,6 +1947,15 @@ export default function EmailSdrWorkspace({
         </Stack>
       </Paper>
 
+      {loadIssues.length ? (
+        <Alert
+          severity="warning"
+          action={<Button color="inherit" size="small" onClick={loadWorkspace}>Retry</Button>}
+        >
+          Some Email SDR sections could not load: {loadIssues.join(", ")}. Other available sections remain usable.
+        </Alert>
+      ) : null}
+
       {activeCampaignWorkspaceId ? (
         <EmailSdrCampaignWorkspacePage
           workspace={campaignWorkspaceData}
@@ -2524,6 +2531,9 @@ export default function EmailSdrWorkspace({
             Required before sending
           </Typography>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Provider Connections</Typography>
+          <Alert severity="info" variant="outlined">
+            The effective send cap is the lowest configured campaign, sender, provider, and current-day limit. To send 25 today, set the selected provider, the sender profile, and the sender's current-day limit to at least 25.
+          </Alert>
           <Alert severity={overview.webhook_secret_configured ? "success" : "warning"} variant="outlined">
             Webhook protection stays env-driven. Email SDR uses <strong>EMAIL_SDR_WEBHOOK_SECRET</strong> from backend environment configuration, not from the admin UI.
           </Alert>
@@ -3175,6 +3185,9 @@ export default function EmailSdrWorkspace({
           <Typography variant="body2" color="text.secondary">
             Keep warmup, paused state, and daily limits here. Campaign operations now happen in campaign workspace pages.
           </Typography>
+          <Alert severity="info" variant="outlined">
+            This is today's sender limit. It does not replace the sender-profile, provider, or campaign limits; all four must allow the intended volume.
+          </Alert>
           {!agentLimits.length ? (
             <Alert severity="info" variant="outlined">No AI email agents configured.</Alert>
           ) : (
