@@ -366,6 +366,11 @@ export const updateEmailCampaignAutomationSettings = async (campaignId, payload 
   return data || { campaign: null, changed_fields: [] };
 };
 
+export const updateEmailCampaignStandingAutomationPolicy = async (campaignId, payload = {}) => {
+  const { data } = await platformAdminApi.patch(`/sales/email-campaigns/${campaignId}/standing-automation-policy`, payload);
+  return data || { campaign: null, policy: null };
+};
+
 export const deleteEmailCampaign = async (campaignId) => {
   const { data } = await platformAdminApi.delete(`/sales/email-campaigns/${campaignId}`);
   return data || { mode: "deleted", campaign_id: campaignId };

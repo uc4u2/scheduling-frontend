@@ -6,9 +6,11 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   Divider,
   Drawer,
+  FormControlLabel,
   MenuItem,
   Pagination,
   Paper,
@@ -515,12 +517,19 @@ function CampaignWorkspacePanel({
   onCloseHotLead,
   onSaveDeliveryLimits,
   savingDeliveryLimits = false,
+  onSaveStandingAutomationPolicy,
+  savingStandingAutomationPolicy = false,
 }) {
   const [tab, setTab] = useState("overview");
   const [dailyTotalLimit, setDailyTotalLimit] = useState("");
   const [dailyPerAgentLimit, setDailyPerAgentLimit] = useState("");
+  const [standingDailyLimit, setStandingDailyLimit] = useState("25");
+  const [standingRunAtLocal, setStandingRunAtLocal] = useState("08:00");
+  const [standingExpiry, setStandingExpiry] = useState("");
+  const [standingAcknowledged, setStandingAcknowledged] = useState(false);
   const campaign = workspace?.campaign || null;
   const overview = workspace?.overview || {};
+  const standingPolicy = campaign?.standing_automation_policy || null;
 
   React.useEffect(() => {
     setTab("overview");
@@ -530,6 +539,13 @@ function CampaignWorkspacePanel({
     setDailyTotalLimit(campaign?.daily_limit_total == null ? "" : String(campaign.daily_limit_total));
     setDailyPerAgentLimit(campaign?.daily_limit_per_agent == null ? "" : String(campaign.daily_limit_per_agent));
   }, [campaign?.id, campaign?.daily_limit_per_agent, campaign?.daily_limit_total]);
+
+  React.useEffect(() => {
+    setStandingDailyLimit(String(standingPolicy?.daily_limit || 25));
+    setStandingRunAtLocal(standingPolicy?.run_at_local || "08:00");
+    setStandingExpiry(standingPolicy?.expires_at ? String(standingPolicy.expires_at).replace("Z", "").slice(0, 16) : "");
+    setStandingAcknowledged(false);
+  }, [campaign?.id, standingPolicy?.daily_limit, standingPolicy?.run_at_local, standingPolicy?.expires_at]);
 
   return (
     <Stack spacing={0} sx={{ height: "100%" }}>
@@ -650,6 +666,98 @@ function CampaignWorkspacePanel({
                     ) : (
                       <Alert severity="info" variant="outlined">No specific agent selection is stored on this campaign.</Alert>
                     )}
+                  </Stack>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                  <Stack spacing={1.5}>
+                    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1}>
+                      <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Standing send policy</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          The worker can send only sales-manager READY drafts for this campaign. It rechecks recipient, content, policy version, send window, suppression, sender, provider, and daily limits at delivery time.
+                        </Typography>
+                      </Box>
+                      <Chip
+                        size="small"
+                        color={standingPolicy?.status === "active" ? "success" : standingPolicy?.status === "paused" ? "warning" : "default"}
+                        label={standingPolicy?.status ? `Policy: ${standingPolicy.status}` : "Policy: off"}
+                      />
+                    </Stack>
+                    <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+                      <TextField
+                        size="small"
+                        type="number"
+                        label="Business-day cap"
+                        helperText="Maximum 25; lower campaign, sender, or provider limits still apply."
+                        value={standingDailyLimit}
+                        onChange={(event) => setStandingDailyLimit(event.target.value)}
+                        inputProps={{ min: 1, max: 25 }}
+                        sx={{ minWidth: { xs: "100%", md: 220 } }}
+                      />
+                      <TextField
+                        size="small"
+                        type="time"
+                        label="Start checking (campaign timezone)"
+                        value={standingRunAtLocal}
+                        onChange={(event) => setStandingRunAtLocal(event.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ minWidth: { xs: "100%", md: 260 } }}
+                      />
+                      <TextField
+                        size="small"
+                        type="datetime-local"
+                        label="Policy expiry (UTC)"
+                        helperText="An active policy must expire; renew it intentionally."
+                        value={standingExpiry}
+                        onChange={(event) => setStandingExpiry(event.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ minWidth: { xs: "100%", md: 300 } }}
+                      />
+                    </Stack>
+                    <FormControlLabel
+                      control={<Checkbox checked={standingAcknowledged} onChange={(event) => setStandingAcknowledged(event.target.checked)} />}
+                      label="I authorize this campaign to automatically send eligible READY drafts under this cap until the stated expiry."
+                    />
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} useFlexGap flexWrap="wrap">
+                      <Button
+                        variant="contained"
+                        disabled={savingStandingAutomationPolicy || !onSaveStandingAutomationPolicy || !standingAcknowledged || !standingExpiry}
+                        onClick={() => onSaveStandingAutomationPolicy(campaign.id, {
+                          status: "active",
+                          daily_limit: Number(standingDailyLimit || 0),
+                          run_at_local: standingRunAtLocal,
+                          expires_at: `${standingExpiry}Z`,
+                          timezone: campaign.timezone,
+                        })}
+                      >
+                        {standingPolicy?.status === "active" ? "Renew / update policy" : "Activate standing policy"}
+                      </Button>
+                      {standingPolicy?.status === "active" ? (
+                        <Button
+                          variant="outlined"
+                          color="warning"
+                          disabled={savingStandingAutomationPolicy || !onSaveStandingAutomationPolicy}
+                          onClick={() => onSaveStandingAutomationPolicy(campaign.id, { status: "paused" })}
+                        >
+                          Pause policy
+                        </Button>
+                      ) : null}
+                      {standingPolicy ? (
+                        <Button
+                          variant="text"
+                          color="error"
+                          disabled={savingStandingAutomationPolicy || !onSaveStandingAutomationPolicy}
+                          onClick={() => onSaveStandingAutomationPolicy(campaign.id, { status: "disabled" })}
+                        >
+                          Disable policy
+                        </Button>
+                      ) : null}
+                    </Stack>
+                    {standingPolicy?.expires_at ? (
+                      <Typography variant="caption" color="text.secondary">
+                        Current version {standingPolicy.version || 1} expires {formatEmailSdrDateTime(standingPolicy.expires_at)}.
+                      </Typography>
+                    ) : null}
                   </Stack>
                 </Paper>
               </Stack>

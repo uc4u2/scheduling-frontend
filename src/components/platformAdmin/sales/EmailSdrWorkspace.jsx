@@ -84,6 +84,7 @@ import {
   updateEmailAgent,
   updateEmailAgentLimitToday,
   updateEmailCampaignAutomationSettings,
+  updateEmailCampaignStandingAutomationPolicy,
   updateEmailMessage,
   updateEmailProviderConnection,
   updateEmailSegment,
@@ -1323,6 +1324,28 @@ export default function EmailSdrWorkspace({
     }
   };
 
+  const handleSaveStandingAutomationPolicy = async (campaignId, payload = {}) => {
+    setSubmitting(true);
+    try {
+      const result = await updateEmailCampaignStandingAutomationPolicy(campaignId, payload);
+      const policy = result?.policy || {};
+      showBanner(
+        "success",
+        policy.status === "active"
+          ? `Standing automation is active: up to ${policy.daily_limit} reviewed emails per business day.`
+          : `Standing automation is ${policy.status || "updated"}.`,
+      );
+      await loadWorkspace();
+      if (Number(activeCampaignWorkspaceId) === Number(campaignId)) {
+        await loadCampaignWorkspaceById(campaignId, { showLoader: false });
+      }
+    } catch (error) {
+      showBanner("error", error?.response?.data?.error || "Failed to update the standing automation policy.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleDeleteCampaign = async (campaign) => {
     if (!campaign?.id) return;
     setSubmitting(true);
@@ -1981,6 +2004,8 @@ export default function EmailSdrWorkspace({
           onCloseHotLead={handleCloseHotLead}
           onSaveDeliveryLimits={handleSaveCampaignAutomation}
           savingDeliveryLimits={submitting}
+          onSaveStandingAutomationPolicy={handleSaveStandingAutomationPolicy}
+          savingStandingAutomationPolicy={submitting}
           onBack={handleCloseCampaignWorkspace}
         />
       ) : (
