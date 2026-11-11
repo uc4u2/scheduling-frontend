@@ -814,6 +814,23 @@ const handleEditSave = async () => {
     navigate(`/manager/payments?${params.toString()}`);
   };
 
+  const handleCopyPendingPaymentLink = async (row) => {
+    if (!row?.id) return;
+    try {
+      const response = await api.post(`/api/manager/appointments/${row.id}/payment-link`);
+      const paymentUrl = String(response?.data?.payment_url || "").trim();
+      if (!paymentUrl) throw new Error("Payment link is unavailable.");
+      await navigator.clipboard.writeText(paymentUrl);
+      setSnackbar({ open: true, message: "Secure payment link copied.", severity: "success" });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error?.response?.data?.error || error?.message || "Unable to create a payment link.",
+        severity: "error",
+      });
+    }
+  };
+
 // New: navigator to payments hub in refund mode
 const handleRefund = (row) => {
   const params = new URLSearchParams({
@@ -930,6 +947,17 @@ const RowActions = ({ row }) => {
         >
           {t("manager.bookings.actions.payments")}
         </MenuItem>
+
+        {String(row.status || "").toLowerCase() === "pending_payment" && (
+          <MenuItem
+            onClick={async () => {
+              await handleCopyPendingPaymentLink(row);
+              handleClose();
+            }}
+          >
+            Copy payment link
+          </MenuItem>
+        )}
 
         {String(row.status || "").toLowerCase() === "completed" &&
           String(row.payment_status || "").toLowerCase() !== "paid" && (
@@ -1672,7 +1700,6 @@ const RowActions = ({ row }) => {
 };
 
 export default ManagerBookings;
-
 
 
 
