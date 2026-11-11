@@ -89,6 +89,7 @@ export default function PublicAppointmentPayPage({ slugOverride }) {
   const [search] = useSearchParams();
   const navigate = useNavigate();
   const paymentIntentId = (search.get("pi") || "").trim();
+  const paymentLinkToken = (search.get("token") || "").trim();
 
   const stripePublicKey = process.env.REACT_APP_STRIPE_PUBLIC_KEY || "";
   const [loading, setLoading] = useState(true);
@@ -121,7 +122,9 @@ export default function PublicAppointmentPayPage({ slugOverride }) {
         const { data } = await api.get(
           `/public/${slug}/payment-link/${appointmentId}`,
           {
-            params: paymentIntentId ? { pi: paymentIntentId } : {},
+            params: paymentIntentId
+              ? { pi: paymentIntentId, ...(paymentLinkToken ? { token: paymentLinkToken } : {}) }
+              : {},
             noAuth: true,
             noCompanyHeader: true,
           }
@@ -140,7 +143,7 @@ export default function PublicAppointmentPayPage({ slugOverride }) {
     return () => {
       active = false;
     };
-  }, [slug, appointmentId, paymentIntentId]);
+  }, [slug, appointmentId, paymentIntentId, paymentLinkToken]);
 
   const handlePaid = async (confirmedPaymentIntentId) => {
     try {
@@ -150,6 +153,7 @@ export default function PublicAppointmentPayPage({ slugOverride }) {
         {
           appointment_id: Number(appointmentId),
           payment_intent_id: confirmedPaymentIntentId,
+          payment_link_token: paymentLinkToken || undefined,
           amount,
         },
         { noAuth: true, noCompanyHeader: true }

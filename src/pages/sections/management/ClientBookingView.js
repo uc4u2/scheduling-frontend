@@ -173,6 +173,11 @@ export default function ClientBookingView({ token: propToken = null, slug: propS
         ? "Payment required flow started."
         : "Booking created!";
 
+      if (requirePay && bookingRes?.data?.payment_url) {
+        hostedLink = bookingRes.data.payment_url;
+        successText = "Payment request sent. A secure payment link is also ready to copy.";
+      }
+
       if (!requirePay && createHostedLink && appointmentId) {
         const amountCents = Math.round(Math.max(0, selectedServicePrice) * 100);
         if (amountCents > 0) {
@@ -358,7 +363,7 @@ export default function ClientBookingView({ token: propToken = null, slug: propS
         <Alert severity="success" sx={{ mt:2 }}>
           <Stack spacing={1}>
             <Typography variant="body2" fontWeight={700}>
-              Hosted payment link ready
+              Payment link ready
             </Typography>
             <Typography variant="body2">
               Appointment #{paymentLinkState.appointmentId}
