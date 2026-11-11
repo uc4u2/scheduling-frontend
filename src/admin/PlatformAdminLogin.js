@@ -21,6 +21,8 @@ export default function PlatformAdminLogin() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loginCode, setLoginCode] = useState("");
+  const [challengeId, setChallengeId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -33,14 +35,30 @@ export default function PlatformAdminLogin() {
     setLoading(true);
     try {
       const { data } = await platformAdminApi.post("/auth/login", { email, password });
-      if (data?.token) {
-        localStorage.setItem("platformAdminToken", data.token);
-        navigate("/admin/search");
+      if (data?.mfa_required && data?.challenge_id) {
+        setChallengeId(data.challenge_id);
+        setNotice("We emailed you a sign-in code.");
       } else {
         setError("Login failed.");
       }
     } catch (err) {
       setError(err?.response?.data?.error || "Login failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyLoginCode = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const { data } = await platformAdminApi.post("/auth/login/verify", { email, challenge_id: challengeId, code: loginCode });
+      if (!data?.token) throw new Error("Login failed.");
+      localStorage.setItem("platformAdminToken", data.token);
+      navigate("/admin/search");
+    } catch (err) {
+      setError(err?.response?.data?.error || err?.message || "Login failed.");
     } finally {
       setLoading(false);
     }
@@ -53,7 +71,7 @@ export default function PlatformAdminLogin() {
           Platform Admin Login
         </Typography>
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-        <Box component="form" onSubmit={submit}>
+        <Box component="form" onSubmit={challengeId ? verifyLoginCode : submit}>
           <Stack spacing={2}>
             <TextField
               label="Email"
@@ -61,17 +79,50 @@ export default function PlatformAdminLogin() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={Boolean(challengeId)}
             />
-            <TextField
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            {!challengeId ? (
+              <TextField
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            ) : (
+              <TextField
+                label="Email sign-in code"
+                inputMode="numeric"
+                value={loginCode}
+                onChange={(e) => setLoginCode(e.target.value)}
+                required
+                autoFocus
+              />
+            )}
             <Button type="submit" variant="contained" disabled={loading}>
-              {loading ? "Signing in..." : "Sign in"}
+              {loading ? "Signing in..." : challengeId ? "Verify code" : "Sign in"}
             </Button>
+            {challengeId ? (
+              <Button
+                variant="text"
+                disabled={loading}
+                onClick={async () => {
+                  setError("");
+                  try {
+                    const { data } = await platformAdminApi.post("/auth/login/resend", {
+                      email,
+                      challenge_id: challengeId,
+                    });
+                    if (data?.challenge_id) setChallengeId(data.challenge_id);
+                    setNotice("A new sign-in code was emailed.");
+                  } catch (err) {
+                    setError(err?.response?.data?.error || "Unable to resend the code.");
+                  }
+                }}
+              >
+                Resend code
+              </Button>
+            ) : null}
             <Button variant="text" onClick={() => setForgotOpen(true)}>
               Forgot password?
             </Button>
