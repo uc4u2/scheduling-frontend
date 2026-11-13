@@ -3115,46 +3115,13 @@ export default function ManagerClientsWorkspace() {
     }
     const form = new FormData();
     form.append("file", file);
-    form.append("context", "client_document");
-    if (profile?.company_id) form.append("company_id", String(profile.company_id));
-
-    const uploadRes = await api.post("/api/website/media/upload", form, {
+    form.append("category", category || "other");
+    form.append("note", note?.trim() || "");
+    const response = await api.post(`/api/manager/client-360/${clientId}/documents`, form, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    const uploadedItem =
-      uploadRes.data?.item ||
-      uploadRes.data?.items?.[0] ||
-      null;
-    const rawUrl =
-      uploadedItem?.url_public ||
-      uploadedItem?.file_url ||
-      uploadedItem?.url ||
-      uploadRes.data?.url ||
-      uploadRes.data?.url_public;
-    if (!rawUrl) {
-      throw new Error("Upload did not return a file URL.");
-    }
-    const apiOrigin = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "");
-    const finalUrl = /^https?:\/\//i.test(rawUrl)
-      ? rawUrl
-      : apiOrigin
-        ? `${apiOrigin}${rawUrl.startsWith("/") ? "" : "/"}${rawUrl}`
-        : rawUrl;
-
-    const created = await createManagerClient360Document(clientId, {
-      original_filename: file.name,
-      file_url: finalUrl,
-      storage_provider: uploadedItem?.storage_provider || uploadedItem?.provider || "manual_upload",
-      content_type: file.type || uploadedItem?.file_type || "application/octet-stream",
-      file_size: file.size || undefined,
-      category: category || "other",
-      note: note?.trim() || "",
-      scan_status: "clean",
-      object_key: uploadedItem?.key || uploadedItem?.object_key || uploadedItem?.stored_name || undefined,
-      bucket: uploadedItem?.bucket || undefined,
-    });
-    return created?.document || created;
-  }, [clientId, profile?.company_id]);
+    return response?.data?.document || response?.document || response;
+  }, [clientId]);
 
   const handleUploadDocument = async () => {
     if (!clientId || !documentFile) {
